@@ -13,7 +13,7 @@ const PORT = process.env.PORT || config.port || 3000;
 connectDB();
 
 // Middlewares
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
+const allowedOrigins = (process.env.CORS_ORIGINS || "https://npos-front-git-main-camilo-velezs-projects-8efa7d10.vercel.app")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
