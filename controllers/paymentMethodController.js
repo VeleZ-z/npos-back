@@ -4,10 +4,10 @@ const PaymentMethod = require("../models/paymentMethodModel");
 const addPaymentMethod = async (req, res, next) => {
   try {
     const { name, estado_id } = req.body || {};
-    if (!name) return next(createHttpError(400, "name is required"));
+    if (!name) return next(createHttpError(400, "el nombre es requerido"));
     const pm = PaymentMethod({ name, estadoId: estado_id });
     await pm.save();
-    res.status(201).json({ success: true, message: "Payment method created", data: pm });
+    res.status(201).json({ success: true, message: "Método de pago creado", data: pm });
   } catch (err) {
     next(err);
   }
@@ -26,7 +26,7 @@ const getPaymentMethodById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const pm = await PaymentMethod.findById(Number(id));
-    if (!pm) return next(createHttpError(404, "Payment method not found"));
+    if (!pm) return next(createHttpError(404, "Método de pago no encontrado"));
     res.status(200).json({ success: true, data: pm });
   } catch (err) {
     next(err);
@@ -37,8 +37,8 @@ const updatePaymentMethod = async (req, res, next) => {
   try {
     const { id } = req.params;
     const updated = await PaymentMethod.updateById(Number(id), req.body || {});
-    if (!updated) return next(createHttpError(404, "Payment method not found"));
-    res.status(200).json({ success: true, message: "Payment method updated", data: updated });
+    if (!updated) return next(createHttpError(404, "Método de pago no encontrado"));
+    res.status(200).json({ success: true, message: "Método de pago actualizado", data: updated });
   } catch (err) {
     next(err);
   }
@@ -48,9 +48,9 @@ const updatePaymentMethodEstado = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { estado_id } = req.body || {};
-    if (!estado_id) return next(createHttpError(400, "estado_id is required"));
+    if (!estado_id) return next(createHttpError(400, "el estado_id es requerido"));
     const updated = await PaymentMethod.updateEstado(Number(id), Number(estado_id));
-    res.status(200).json({ success: true, message: "Estado updated", data: updated });
+    res.status(200).json({ success: true, message: "Estado actualizado", data: updated });
   } catch (err) {
     next(err);
   }
@@ -60,7 +60,7 @@ const deletePaymentMethod = async (req, res, next) => {
   try {
     const { id } = req.params;
     await PaymentMethod.deleteById(Number(id));
-    res.status(200).json({ success: true, message: "Payment method deleted" });
+    res.status(200).json({ success: true, message: "Método de pago eliminado" });
   } catch (err) {
     next(err);
   }

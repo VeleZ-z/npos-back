@@ -4,10 +4,10 @@ const Provider = require("../models/providerModel");
 const addProvider = async (req, res, next) => {
   try {
     const { name, phone, email, contact } = req.body || {};
-    if (!name || !contact) return next(createHttpError(400, "name and contact are required"));
+    if (!name || !contact) return next(createHttpError(400, "el nombre y el contacto son requeridos"));
     const prov = Provider({ name, phone, email, contact });
     await prov.save();
-    res.status(201).json({ success: true, message: "Provider created", data: prov });
+    res.status(201).json({ success: true, message: "Proveedor creado", data: prov });
   } catch (err) {
     next(err);
   }
@@ -26,7 +26,7 @@ const getProviderById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const prov = await Provider.findById(Number(id));
-    if (!prov) return next(createHttpError(404, "Provider not found"));
+    if (!prov) return next(createHttpError(404, "Proveedor no encontrado"));
     res.status(200).json({ success: true, data: prov });
   } catch (err) {
     next(err);
@@ -37,8 +37,8 @@ const updateProvider = async (req, res, next) => {
   try {
     const { id } = req.params;
     const updated = await Provider.updateById(Number(id), req.body || {});
-    if (!updated) return next(createHttpError(404, "Provider not found"));
-    res.status(200).json({ success: true, message: "Provider updated", data: updated });
+    if (!updated) return next(createHttpError(404, "Proveedor no encontrado"));
+    res.status(200).json({ success: true, message: "Proveedor actualizado", data: updated });
   } catch (err) {
     next(err);
   }
@@ -48,7 +48,7 @@ const deleteProvider = async (req, res, next) => {
   try {
     const { id } = req.params;
     await Provider.deleteById(Number(id));
-    res.status(200).json({ success: true, message: "Provider deleted" });
+    res.status(200).json({ success: true, message: "Proveedor eliminado" });
   } catch (err) {
     next(err);
   }

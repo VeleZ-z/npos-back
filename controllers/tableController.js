@@ -5,21 +5,21 @@ const addTable = async (req, res, next) => {
   try {
     const { tableNo, seats } = req.body;
     if (!tableNo) {
-      const error = createHttpError(400, "Please provide table No!");
+      const error = createHttpError(400, "Por favor, proporcione el número de mesa!");
       return next(error);
     }
     const isTablePresent = await Table.findOne({ tableNo });
 
     if (isTablePresent) {
-      const error = createHttpError(400, "Table already exist!");
+      const error = createHttpError(400, "la mesa ya existe!");
       return next(error);
     }
 
-    const newTable = new Table({ tableNo, seats });
+    const newTable = new Table({ tableNo, seats }); 
     await newTable.save();
     res
       .status(201)
-      .json({ success: true, message: "Table added!", data: newTable });
+      .json({ success: true, message: "Mesa añadida!", data: newTable });   
   } catch (error) {
     next(error);
   }
@@ -43,18 +43,18 @@ const updateTable = async (req, res, next) => {
 
     const { id } = req.params;
     if (!id || isNaN(Number(id))) {
-      const error = createHttpError(404, "Invalid id!");
+      const error = createHttpError(404, "ID inválido!");
       return next(error);
     }
 
     const table = await Table.findByIdAndUpdate(Number(id), { status, currentOrder: orderId }, { new: true });
 
     if (!table) {
-      const error = createHttpError(404, "Table not found!");
+      const error = createHttpError(404, "Mesa no encontrada!");
       return error;
     }
 
-    res.status(200).json({success: true, message: "Table updated!", data: table});
+    res.status(200).json({success: true, message: "Mesa actualizada!", data: table});
 
   } catch (error) {
     next(error);

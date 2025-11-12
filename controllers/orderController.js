@@ -100,11 +100,11 @@ const getOrderById = async (req, res, next) => {
     const { id } = req.params;
     const order = await Order.findById(Number(id));
     if (!order) {
-      const error = createHttpError(404, "Order not found!");
+      const error = createHttpError(404, "Pedido no encontrado!");
       return next(error);
     }
 
-    res.status(200).json({ success: true, data: order });
+    res.status(200).json({ success: true, message: "Pedido encontrado", data: order });
   } catch (error) {
     next(error);
   }
@@ -129,7 +129,7 @@ const updateOrder = async (req, res, next) => {
     const { orderStatus, tableId } = req.body || {};
     const { id } = req.params;
     const orderId = Number(id);
-    if (!orderId) return next(createHttpError(400, "Invalid order id!"));
+    if (!orderId) return next(createHttpError(400, "el ID del pedido es inválido!"));
 
     // Guard: only Admin can close without invoice
     if (orderStatus) {
@@ -149,13 +149,13 @@ const updateOrder = async (req, res, next) => {
 
     const current = await Order.findById(orderId);
     if (!current) {
-      const error = createHttpError(404, "Order not found!");
+      const error = createHttpError(404, "Pedido no encontrado!");
       return next(error);
     }
     const currentStatusUpper = String(current.orderStatus || "").toUpperCase();
     if (currentStatusUpper === "CERRADO" || currentStatusUpper === "PAGADO") {
       return next(
-        createHttpError(400, "No se puede modificar una orden pagada o cerrada")
+        createHttpError(400, "No se puede modificar un pedido pagado o cerrado")
       );
     }
 
@@ -170,7 +170,7 @@ const updateOrder = async (req, res, next) => {
     if (tableId != null) {
       const parsed = Number(tableId);
       if (!Number.isInteger(parsed) || parsed <= 0) {
-        return next(createHttpError(400, "tableId invalido"));
+        return next(createHttpError(400, "el ID de la mesa es inválido"));
       }
       mesaId = parsed;
     } else {
@@ -730,9 +730,9 @@ module.exports.setOrderCustomer = setOrderCustomer;
 async function deleteOrder(req, res, next) {
   try {
     const orderId = Number(req.params.id);
-    if (!orderId) return next(createHttpError(400, "Invalid order id"));
+    if (!orderId) return next(createHttpError(400, "el ID del pedido es inválido"));
     const order = await Order.findById(orderId);
-    if (!order) return next(createHttpError(404, "Order not found"));
+    if (!order) return next(createHttpError(404, "Pedido no encontrado"));
     const status = String(order.orderStatus || "").toUpperCase();
     if (status !== "POR_APROBAR") {
       return next(createHttpError(403, "Solo se pueden eliminar pedidos en estado POR_APROBAR"));

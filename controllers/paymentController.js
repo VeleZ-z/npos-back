@@ -35,9 +35,9 @@ const verifyPayment = async (req, res, next) => {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      res.json({ success: true, message: "Payment verified successfully!" });
+      res.json({ success: true, message: "Pago verificado exitosamente!" });
     } else {
-      const error = createHttpError(400, "Payment verification failed!");
+      const error = createHttpError(400, "Verificación de pago fallida!");
       return next(error);
     }
   } catch (error) {
@@ -68,7 +68,7 @@ const webHookVerification = async (req, res, next) => {
 
       res.json({ success: true });
     } else {
-      const error = createHttpError(400, "Invalid Signature!");
+      const error = createHttpError(400, "Firma inválida!");
       return next(error);
     }
   } catch (error) {

@@ -4,10 +4,10 @@ const Category = require("../models/categoryModel");
 const addCategory = async (req, res, next) => {
   try {
     const { name } = req.body;
-    if (!name) return next(createHttpError(400, "Category name is required"));
+    if (!name) return next(createHttpError(400, "el nombre de la categoría es requerido"));
     const cat = Category({ name });
     await cat.save();
-    res.status(201).json({ success: true, message: "Category created", data: cat });
+    res.status(201).json({ success: true, message: "Categoría creada", data: cat });
   } catch (err) {
     next(err);
   }
@@ -26,10 +26,10 @@ const updateCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
-    if (!id) return next(createHttpError(400, "Category id is required"));
+    if (!id) return next(createHttpError(400, "el ID de la categoría es requerido"));
     const updated = await Category.updateById(Number(id), { name });
-    if (!updated) return next(createHttpError(404, "Category not found"));
-    res.status(200).json({ success: true, message: "Category updated", data: updated });
+    if (!updated) return next(createHttpError(404, "Categoría no encontrada"));
+    res.status(200).json({ success: true, message: "Categoría actualizada", data: updated });
   } catch (err) {
     next(err);
   }
@@ -38,7 +38,7 @@ const updateCategory = async (req, res, next) => {
 const deleteCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!id) return next(createHttpError(400, "Category id is required"));
+    if (!id) return next(createHttpError(400, "el ID de la categoría es requerido"));
     await Category.deleteById(Number(id));
     res.status(200).json({ success: true, message: "Category deleted" });
   } catch (err) {

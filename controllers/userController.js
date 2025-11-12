@@ -36,13 +36,13 @@ const register = async (req, res, next) => {
         const { name, phone, email, password, role } = req.body;
 
         if(!name || !phone || !email || !password || !role){
-            const error = createHttpError(400, "All fields are required!");
+            const error = createHttpError(400, "todos los campos son requeridos!");
             return next(error);
         }
 
         const isUserPresent = await User.findOne({email});
         if(isUserPresent){
-            const error = createHttpError(400, "User already exist!");
+            const error = createHttpError(400, "usuario ya creado!");
             return next(error);
         }
 
@@ -67,19 +67,19 @@ const login = async (req, res, next) => {
         const { email, password } = req.body;
 
         if(!email || !password) {
-            const error = createHttpError(400, "All fields are required!");
+            const error = createHttpError(400, "todos los campos son requeridos!");
             return next(error);
         }
 
         const isUserPresent = await User.findOne({email});
         if(!isUserPresent || !isUserPresent.password){
-            const error = createHttpError(401, "Invalid Credentials");
+            const error = createHttpError(401, "credenciales invalidas");
             return next(error);
         }
 
         const isMatch = await bcrypt.compare(password, String(isUserPresent.password));
         if(!isMatch){
-            const error = createHttpError(401, "Invalid Credentials");
+            const error = createHttpError(401, "credenciales invalidas");
             return next(error);
         }
 
