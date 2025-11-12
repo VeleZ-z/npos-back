@@ -3,14 +3,14 @@ const fs = require("fs");
 const path = require("path");
 const config = require("../config/config");
 
-const SMTP_SERVICE = process.env.SMTP_SERVICE || undefined;
+const SMTP_SERVICE = process.env.SMTP_SERVICE || "gmail";
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
-const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_SECURE =
   process.env.SMTP_SECURE != null
     ? String(process.env.SMTP_SECURE).toLowerCase() !== "false"
-    : SMTP_PORT === 465;
-const SMTP_POOL = String(process.env.SMTP_POOL || "false").toLowerCase() === "true";
+    : false;
+const SMTP_POOL = String(process.env.SMTP_POOL || "true").toLowerCase() !== "false";
 const SMTP_USER = process.env.SMTP_USER || config.business.email;
 const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS || "";
 const SMTP_FROM =
@@ -22,6 +22,7 @@ const SMTP_TLS_REJECT =
   process.env.SMTP_TLS_REJECT_UNAUTHORIZED == null
     ? true
     : String(process.env.SMTP_TLS_REJECT_UNAUTHORIZED).toLowerCase() !== "false";
+const SMTP_DNS_PREF = process.env.SMTP_DNS_PREFERENCE || "ipv4";
 
 let transporter = null;
 
@@ -111,9 +112,12 @@ function getTransporter() {
       servername: SMTP_HOST,
     },
   };
-  transporter = SMTP_SERVICE
-    ? nodemailer.createTransport({
+  const serviceOptions = SMTP_SERVICE
+    ? {
         service: SMTP_SERVICE,
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_SECURE,
         auth: { user: SMTP_USER, pass: SMTP_PASS },
         pool: SMTP_POOL,
         connectionTimeout: SMTP_CONN_TIMEOUT,
@@ -123,8 +127,13 @@ function getTransporter() {
           rejectUnauthorized: SMTP_TLS_REJECT,
           servername: SMTP_HOST,
         },
-      })
-    : nodemailer.createTransport(baseOptions);
+        dnsResolvePreference: SMTP_DNS_PREF,
+      }
+    : null;
+  transporter = nodemailer.createTransport(serviceOptions || {
+    ...baseOptions,
+    dnsResolvePreference: SMTP_DNS_PREF,
+  });
   return transporter;
 }
 
