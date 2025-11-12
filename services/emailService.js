@@ -1,7 +1,13 @@
+const https = require("https");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
 const config = require("../config/config");
+
+// Resend HTTP API (preferred in Render)
+const RESEND_ENDPOINT = process.env.RESEND_API_URL || "https://api.resend.com/emails";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const RESEND_FROM = process.env.RESEND_FROM || null;
 
 const SMTP_SERVICE = process.env.SMTP_SERVICE || "gmail";
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
@@ -75,6 +81,10 @@ const mapAttachment = (attachment) => {
 async function sendEmail({ to, subject, html, attachments = [] }) {
   const recipients = toArray(to);
   if (!recipients.length) return;
+  if (RESEND_API_KEY && RESEND_FROM) {
+    await sendViaResend({ to: recipients, subject, html, attachments });
+    return;
+  }
   const mailer = getTransporter();
   if (!mailer) {
     console.warn("[email] skipped: SMTP credentials are not configured");
@@ -137,6 +147,42 @@ function getTransporter() {
   return transporter;
 }
 
+async function sendViaResend({ to, subject, html, attachments }) {
+  const payload = {
+    from: RESEND_FROM,
+    to,
+    subject,
+    html,
+  };
+  const attList = attachments.map(mapAttachmentForResend).filter(Boolean);
+  if (attList.length) {
+    payload.attachments = attList;
+  }
+  await requestResend(payload);
+}
+
+const mapAttachmentForResend = (attachment) => {
+  if (!attachment) return null;
+  let buffer = null;
+  if (attachment.content) {
+    buffer = Buffer.isBuffer(attachment.content)
+      ? attachment.content
+      : Buffer.from(attachment.content);
+  } else if (attachment.path) {
+    try {
+      buffer = fs.readFileSync(attachment.path);
+    } catch {
+      return null;
+    }
+  }
+  if (!buffer) return null;
+  return {
+    filename: attachment.filename || "attachment",
+    content: buffer.toString("base64"),
+    contentType: attachment.contentType || "application/octet-stream",
+  };
+};
+
 function buildAssetUrl(relativePath = "") {
   if (!relativePath) return null;
   if (/^https?:\/\//i.test(relativePath)) return relativePath;
@@ -154,6 +200,49 @@ function getLogoDataUri() {
     cachedLogoDataUri = null;
   }
   return cachedLogoDataUri;
+}
+
+function requestResend(payload) {
+  return new Promise((resolve, reject) => {
+    if (!RESEND_API_KEY || !payload.from) {
+      return reject(new Error("Resend is not configured"));
+    }
+    const body = JSON.stringify(payload);
+    const url = new URL(RESEND_ENDPOINT);
+    const req = https.request(
+      {
+        method: "POST",
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: `${url.pathname}${url.search}`,
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        },
+      },
+      (res) => {
+        let responseBody = "";
+        res.on("data", (chunk) => {
+          responseBody += chunk;
+        });
+        res.on("end", () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve();
+          } else {
+            reject(
+              new Error(
+                `Resend API error ${res.statusCode}: ${responseBody}`
+              )
+            );
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
 }
 
 module.exports = {
