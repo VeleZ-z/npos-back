@@ -33,6 +33,7 @@ app.use(express.json()); // parse incoming request in json format
 app.use(cookieParser())
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 
 // Root Endpoint

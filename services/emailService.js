@@ -197,6 +197,9 @@ function buildAssetUrl(relativePath = "") {
 }
 
 function getLogoDataUri() {
+  if (process.env.EMAIL_LOGO_URL) {
+    return process.env.EMAIL_LOGO_URL.trim();
+  }
   if (cachedLogoDataUri !== undefined) return cachedLogoDataUri;
   try {
     const buffer = fs.readFileSync(logoPath);
