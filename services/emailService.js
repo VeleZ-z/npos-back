@@ -3,17 +3,26 @@ const fs = require("fs");
 const path = require("path");
 const config = require("../config/config");
 
+const SMTP_SERVICE = process.env.SMTP_SERVICE || undefined;
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
 const SMTP_SECURE =
   process.env.SMTP_SECURE != null
     ? String(process.env.SMTP_SECURE).toLowerCase() !== "false"
     : SMTP_PORT === 465;
+const SMTP_POOL = String(process.env.SMTP_POOL || "false").toLowerCase() === "true";
 const SMTP_USER = process.env.SMTP_USER || config.business.email;
 const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS || "";
-const DEFAULT_FROM =
+const SMTP_FROM =
   process.env.SMTP_FROM ||
   (SMTP_USER ? `${config.business.name} <${SMTP_USER}>` : config.business.email);
+const SMTP_CONN_TIMEOUT = Number(process.env.SMTP_CONN_TIMEOUT || 15000);
+const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT || 20000);
+const SMTP_TLS_REJECT =
+  process.env.SMTP_TLS_REJECT_UNAUTHORIZED == null
+    ? true
+    : String(process.env.SMTP_TLS_REJECT_UNAUTHORIZED).toLowerCase() !== "false";
+
 let transporter = null;
 
 const assetBaseUrl =
@@ -67,15 +76,13 @@ async function sendEmail({ to, subject, html, attachments = [] }) {
   if (!recipients.length) return;
   const mailer = getTransporter();
   if (!mailer) {
-    console.warn(
-      "[email] skipped: missing SMTP_USER/SMTP_PASS environment variables"
-    );
+    console.warn("[email] skipped: SMTP credentials are not configured");
     return;
   }
 
   const attList = attachments.map(mapAttachment).filter(Boolean);
   const message = {
-    from: DEFAULT_FROM,
+    from: SMTP_FROM,
     to: recipients,
     subject,
     html,
@@ -90,12 +97,34 @@ async function sendEmail({ to, subject, html, attachments = [] }) {
 function getTransporter() {
   if (transporter) return transporter;
   if (!SMTP_USER || !SMTP_PASS) return null;
-  transporter = nodemailer.createTransport({
+  const baseOptions = {
+    pool: SMTP_POOL,
     host: SMTP_HOST,
     port: SMTP_PORT,
     secure: SMTP_SECURE,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
+    connectionTimeout: SMTP_CONN_TIMEOUT,
+    greetingTimeout: SMTP_CONN_TIMEOUT,
+    socketTimeout: SMTP_SOCKET_TIMEOUT,
+    tls: {
+      rejectUnauthorized: SMTP_TLS_REJECT,
+      servername: SMTP_HOST,
+    },
+  };
+  transporter = SMTP_SERVICE
+    ? nodemailer.createTransport({
+        service: SMTP_SERVICE,
+        auth: { user: SMTP_USER, pass: SMTP_PASS },
+        pool: SMTP_POOL,
+        connectionTimeout: SMTP_CONN_TIMEOUT,
+        greetingTimeout: SMTP_CONN_TIMEOUT,
+        socketTimeout: SMTP_SOCKET_TIMEOUT,
+        tls: {
+          rejectUnauthorized: SMTP_TLS_REJECT,
+          servername: SMTP_HOST,
+        },
+      })
+    : nodemailer.createTransport(baseOptions);
   return transporter;
 }
 
