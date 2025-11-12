@@ -7,7 +7,20 @@ const config = require("../config/config");
 // Resend HTTP API (preferred in Render)
 const RESEND_ENDPOINT = process.env.RESEND_API_URL || "https://api.resend.com/emails";
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const RESEND_FROM = process.env.RESEND_FROM || null;
+
+const sanitizeSender = (value) => {
+  if (!value) return null;
+  let trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+  return trimmed || null;
+};
+
+const RESEND_FROM = sanitizeSender(process.env.RESEND_FROM);
 
 const SMTP_SERVICE = process.env.SMTP_SERVICE || "gmail";
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
@@ -20,7 +33,7 @@ const SMTP_POOL = String(process.env.SMTP_POOL || "true").toLowerCase() !== "fal
 const SMTP_USER = process.env.SMTP_USER || config.business.email;
 const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS || "";
 const SMTP_FROM =
-  process.env.SMTP_FROM ||
+  sanitizeSender(process.env.SMTP_FROM) ||
   (SMTP_USER ? `${config.business.name} <${SMTP_USER}>` : config.business.email);
 const SMTP_CONN_TIMEOUT = Number(process.env.SMTP_CONN_TIMEOUT || 15000);
 const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT || 20000);
