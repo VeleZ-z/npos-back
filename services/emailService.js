@@ -53,16 +53,9 @@ const assetBaseUrl =
   process.env.VITE_BACKEND_URL ||
   "";
 
-const logoPath = path.resolve(
-  __dirname,
-  "..",
-  "..",
-  "pos-frontend",
-  "src",
-  "assets",
-  "images",
-  "logo.png"
-);
+const logoPath = process.env.EMAIL_LOGO_PATH
+  ? path.resolve(process.env.EMAIL_LOGO_PATH)
+  : path.resolve(__dirname, "..", "assets", "email-logo.png");
 let cachedLogoDataUri = undefined;
 
 const toArray = (value) => {
