@@ -1,7 +1,5 @@
-const path = require('path');
-const fs = require('fs');
 const { pool } = require('../config/mysql');
-const config = require('../config/config');
+const { sendEmail, getLogoDataUri } = require('../services/emailService');
 
 const BIRTHDAY_PREFIX = 'Feliz cumpleaños';
 
@@ -57,34 +55,9 @@ async function assignAlertToStaff(alertaId) {
 
 async function sendEmailIfConfigured(to, subject, html) {
   try {
-    const user = process.env.SMTP_USER || config.business.email;
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS || '';
-    if (!user || !pass) return; // not configured
-    let nodemailer;
-    try { nodemailer = require('nodemailer'); } catch { return; }
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user, pass }
-    });
-
-    // Attach logo cid if exists
-    const logoPath = path.resolve(__dirname, '..', '..', 'pos-frontend', 'src', 'assets', 'images', 'logo.png');
-    const attachments = [];
-    if (fs.existsSync(logoPath)) {
-      attachments.push({ filename: 'logo.png', path: logoPath, cid: 'nativhos-logo' });
-      html = html.replace('cid:logo', 'cid:nativhos-logo');
-    } else {
-      html = html.replace('cid:logo', '');
-    }
-
-    await transporter.sendMail({
-      from: `Nativhos <${user}>`,
-      to,
-      subject,
-      html,
-      attachments
-    });
+    const logo = getLogoDataUri();
+    const enriched = logo ? html.replace('cid:logo', logo) : html.replace('cid:logo', '');
+    await sendEmail({ to, subject, html: enriched });
   } catch (e) {
     console.log('[birthdayJob] email send skipped/error:', e?.message || e);
   }

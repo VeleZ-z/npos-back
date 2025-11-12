@@ -1,10 +1,10 @@
 const createHttpError = require("http-errors");
 const fs = require("fs");
 const path = require("path");
-const nodemailer = require("nodemailer");
 const Discount = require("../models/discountModel");
 const User = require("../models/userModel");
 const { pool } = require("../config/mysql");
+const { sendEmail, buildAssetUrl } = require("../services/emailService");
 
 const flyersDir = path.resolve(__dirname, "..", "uploads", "discounts");
 
@@ -26,22 +26,7 @@ const saveFlyer = (file) => {
   return `/uploads/discounts/${filename}`;
 };
 
-const getMailer = () => {
-  const user = process.env.SMTP_USER || process.env.BUSINESS_EMAIL;
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS;
-  if (!user || !pass) return null;
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
-    });
-    return { transporter, from: user };
-  } catch {
-    return null;
-  }
-};
-
-const buildDiscountHtml = (discount, inlineCid) => {
+const buildDiscountHtml = (discount) => {
   const lines = [];
   lines.push(`<h2>Nuevo descuento: ${discount.name}</h2>`);
   if (discount.message) {
@@ -61,9 +46,10 @@ const buildDiscountHtml = (discount, inlineCid) => {
       .join("");
     lines.push(`<div><strong>Productos:</strong><ul>${list}</ul></div>`);
   }
-  if (inlineCid) {
+  const flyerUrl = buildAssetUrl(discount.imageUrl);
+  if (flyerUrl) {
     lines.push(
-      `<div><img src="cid:${inlineCid}" alt="${discount.name}" style="max-width:400px;border-radius:12px"/></div>`
+      `<div><img src="${flyerUrl}" alt="${discount.name}" style="max-width:400px;border-radius:12px"/></div>`
     );
   }
   return `<div style="font-family:Arial,sans-serif;color:#111;">${lines.join(
@@ -75,43 +61,17 @@ const broadcastDiscount = async (discount) => {
   const users = await User.findAll();
   if (!users.length) return;
 
-  const mailer = getMailer();
-  const attachments = [];
-  let cid = null;
-  if (discount.imageUrl) {
+  const html = buildDiscountHtml(discount);
+  for (const user of users) {
+    if (!user.email) continue;
     try {
-      const flyerPath = path.resolve(
-        __dirname,
-        "..",
-        discount.imageUrl.replace(/^\//, "")
-      );
-      if (fs.existsSync(flyerPath)) {
-        cid = `flyer-${discount._id}@nativpos`;
-        attachments.push({
-          filename: path.basename(flyerPath),
-          path: flyerPath,
-          cid,
-        });
-      }
-    } catch {}
-  }
-
-  const html = buildDiscountHtml(discount, cid);
-  if (mailer) {
-    const { transporter, from } = mailer;
-    for (const user of users) {
-      if (!user.email) continue;
-      try {
-        await transporter.sendMail({
-          from: `Nativhos <${from}>`,
-          to: user.email,
-          subject: `Nuevo descuento: ${discount.name}`,
-          html,
-          attachments,
-        });
-      } catch (err) {
-        console.log("[discount email]", err?.message || err);
-      }
+      await sendEmail({
+        to: user.email,
+        subject: `Nuevo descuento: ${discount.name}`,
+        html,
+      });
+    } catch (err) {
+      console.log("[discount email]", err?.message || err);
     }
   }
 

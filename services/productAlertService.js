@@ -1,6 +1,5 @@
 const { pool } = require("../config/mysql");
-const path = require("path");
-const fs = require("fs");
+const { sendEmail, getLogoDataUri } = require("./emailService");
 
 const ROLE_NAMES = ["admin", "administrator", "cashier", "cajero"];
 
@@ -147,9 +146,12 @@ function buildProductAlertEmail(subject, message, product) {
   const qty = product?.quantity != null ? Number(product.quantity) : "-";
   const min = product?.alertMinStock != null ? Number(product.alertMinStock) : "-";
   const barcode = product?.barcode || "-";
+  const logo = getLogoDataUri();
   return (
     '<div style="font-family:Arial,sans-serif;color:#222">' +
-    '<div style="text-align:center;margin-bottom:10px;"><img src="cid:logo" alt="Nativhos" style="height:50px" /></div>' +
+    (logo
+      ? `<div style="text-align:center;margin-bottom:10px;"><img src="${logo}" alt="Nativhos" style="height:50px" /></div>`
+      : "") +
     `<h3 style="margin:0 0 8px">${subject}</h3>` +
     `<p style="margin:0 0 12px">${message}</p>` +
     `<div><strong>Stock actual:</strong> ${qty}</div>` +
@@ -161,45 +163,7 @@ function buildProductAlertEmail(subject, message, product) {
 
 async function sendEmailIfConfigured(to, subject, html) {
   try {
-    const user =
-      process.env.SMTP_USER || require("../config/config").business.email;
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS || "";
-    if (!user || !pass) return;
-    let nodemailer;
-    try {
-      nodemailer = require("nodemailer");
-    } catch {
-      return;
-    }
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
-    });
-    const logoPath = path.resolve(
-      __dirname,
-      "..",
-      "..",
-      "pos-frontend",
-      "src",
-      "assets",
-      "images",
-      "logo.png"
-    );
-    const attachments = [];
-    try {
-      if (fs.existsSync(logoPath)) {
-        attachments.push({ filename: "logo.png", path: logoPath, cid: "logo" });
-      }
-    } catch {
-      // ignore
-    }
-    await transporter.sendMail({
-      from: `Nativhos <${user}>`,
-      to,
-      subject,
-      html,
-      attachments,
-    });
+    await sendEmail({ to, subject, html });
   } catch (err) {
     console.error(err);
   }

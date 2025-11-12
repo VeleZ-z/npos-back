@@ -1,8 +1,7 @@
 ﻿const createHttpError = require("http-errors");
 const Purchase = require("../models/purchaseModel");
 const { pool } = require("../config/mysql");
-const path = require('path');
-const fs = require('fs');
+const { sendEmail, getLogoDataUri } = require("../services/emailService");
 
 const DAYS_BEFORE_EXPIRY_ALERT = 7;
 
@@ -194,19 +193,11 @@ async function assignAlertToStaff(alertaId, purchase) {
 
 async function sendEmailIfConfigured(to, subject, html) {
   try {
-    const user = process.env.SMTP_USER || (require('../config/config').business.email);
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS || '';
-    if (!user || !pass) return;
-    let nodemailer; try { nodemailer = require('nodemailer'); } catch { return; }
-    const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
-    const logoPath = require('path').resolve(__dirname, '..', '..', 'pos-frontend', 'src', 'assets', 'images', 'logo.png');
-    const attachments = [];
-    try {
-      if (require('fs').existsSync(logoPath)) {
-        attachments.push({ filename: 'logo.png', path: logoPath, cid: 'logo' });
-      }
-    } catch { }
-    await transporter.sendMail({ from: `Nativhos <${user}>`, to, subject, html, attachments });
+    const logo = getLogoDataUri();
+    const enrichedHtml = logo
+      ? html.replace('cid:logo', logo)
+      : html.replace('cid:logo', '');
+    await sendEmail({ to, subject, html: enrichedHtml });
   } catch { }
 }
 

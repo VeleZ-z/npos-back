@@ -5,6 +5,7 @@ const Product = require("../models/productModel");
 const User = require("../models/userModel");
 const { pool } = require("../config/mysql");
 const { evaluateProductAlerts } = require("../services/productAlertService");
+const { sendEmail, getLogoDataUri } = require("../services/emailService");
 const path = require("path");
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
@@ -241,7 +242,7 @@ function buildInvoiceEmailHtml(
   invoice,
   order,
   items,
-  { logoCid = null, methodLabel = "", rangeText = getRangeText() } = {}
+  { logoSrc = null, methodLabel = "", rangeText = getRangeText() } = {}
 ) {
   const customerName =
     (invoice.customer?.name || order?.customer?.name || "CLIENTES VARIOS").toUpperCase();
@@ -287,8 +288,8 @@ function buildInvoiceEmailHtml(
   return `
     <div style="font-family:Arial,sans-serif;color:#111;">
       ${
-        logoCid
-          ? `<div style="text-align:center;margin-bottom:10px;"><img src="cid:${logoCid}" alt="Nativhos" style="height:60px" /></div>`
+        logoSrc
+          ? `<div style="text-align:center;margin-bottom:10px;"><img src="${logoSrc}" alt="Nativhos" style="height:60px" /></div>`
           : ""
       }
       <h2 style="text-align:center;margin:0;">${
@@ -567,19 +568,6 @@ function generateInvoicePdfBuffer(
 async function sendInvoiceEmail(invoice, order, customerEmail) {
   if (!customerEmail) return;
   try {
-    const user = process.env.SMTP_USER || process.env.BUSINESS_EMAIL;
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_APP_PASS;
-    if (!user || !pass) return;
-    let nodemailer;
-    try {
-      nodemailer = require("nodemailer");
-    } catch {
-      return;
-    }
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
-    });
     const normalizedItems = normalizeInvoiceItems(
       invoice.items,
       order?.items || []
@@ -590,27 +578,12 @@ async function sendInvoiceEmail(invoice, order, customerEmail) {
         invoice.paymentMethod?.rawName || invoice.paymentMethod || ""
       );
     const rangeText = getRangeText();
-    const attachments = [];
-    const logoPath = path.resolve(
-      __dirname,
-      "..",
-      "..",
-      "pos-frontend",
-      "src",
-      "assets",
-      "images",
-      "logo.png"
-    );
-    let logoCid = null;
-    if (fs.existsSync(logoPath)) {
-      logoCid = "nativhos-logo";
-      attachments.push({ filename: "logo.png", path: logoPath, cid: logoCid });
-    }
     const html = buildInvoiceEmailHtml(invoice, order, normalizedItems, {
-      logoCid,
+      logoSrc: getLogoDataUri(),
       methodLabel: methodDisplay,
       rangeText,
     });
+    const attachments = [];
     try {
       const pdfBuffer = await generateInvoicePdfBuffer(
         invoice,
@@ -623,13 +596,13 @@ async function sendInvoiceEmail(invoice, order, customerEmail) {
           .replace(/[^A-Za-z0-9_-]/g, "")
           .trim() || "NPOS"}.pdf`,
         content: pdfBuffer,
+        contentType: "application/pdf",
       });
     } catch (pdfErr) {
       console.log("[invoice email] pdf error:", pdfErr?.message || pdfErr);
     }
 
-    await transporter.sendMail({
-      from: `Nativhos <${user}>`,
+    await sendEmail({
       to: customerEmail,
       subject: `Factura ${invoice.invoiceNumber}`,
       html,
