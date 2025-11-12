@@ -857,6 +857,11 @@ const createInvoice = async (req, res, next) => {
     // Crear factura
     const invoiceStateId = await ensureInvoiceStateId("FACTURADO");
     const activeCuadreId = await findActiveCuadreId(req.user?._id);
+    if (!activeCuadreId) {
+      return next(
+        createHttpError(400, "No hay una caja abierta. Debes abrir caja antes de facturar.")
+      );
+    }
 
     const invoice = new Invoice({
       invoiceNumber,
@@ -881,7 +886,7 @@ const createInvoice = async (req, res, next) => {
       cashAmount: receivedAmount,
       change: changeValue,
       paymentMethodId: methodRow.id,
-      cuadreId: activeCuadreId || null,
+      cuadreId: activeCuadreId,
       electronic: {
         isElectronic: isElectronic || false
       },
@@ -956,7 +961,7 @@ const createInvoice = async (req, res, next) => {
       customer: customerInfo,
       issuer: invoice.issuer,
       createdAt: invoice.createdAt || new Date(),
-      cuadreId: activeCuadreId || null,
+      cuadreId: activeCuadreId,
       items: invoiceItems,
       totalWithTip,
     };
