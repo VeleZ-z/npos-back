@@ -1,6 +1,7 @@
 const createHttpError = require("http-errors");
 const ExcelJS = require("exceljs");
 const { pool } = require("../config/mysql");
+const { sendEmail, getLogoDataUri } = require("../services/emailService");
 
 const normalizeId = (value) => {
   if (value == null) return null;
@@ -232,6 +233,9 @@ const closeCashDesk = async (req, res, next) => {
     );
 
     const updated = await fetchCuadreById(active.id);
+    notifyCashDeskClosure(updated, totals).catch((err) =>
+      console.error("[cashdesk email]", err?.message || err)
+    );
     res.json({
       success: true,
       message: "Caja cerrada correctamente",
@@ -314,3 +318,113 @@ module.exports = {
   getCashDeskMovements,
   exportCashDeskMovements,
 };
+
+async function fetchAdminRecipients() {
+  const [roles] = await pool.query(
+    "SELECT id FROM roles WHERE LOWER(nombre) IN ('admin','administrator')"
+  );
+  if (!roles.length) return [];
+  const roleIds = roles.map((r) => r.id);
+  const placeholders = roleIds.map(() => "?").join(",");
+  const [users] = await pool.query(
+    `SELECT DISTINCT u.id, u.correo, u.nombre
+       FROM roles_x_usuarios rxu
+       JOIN usuarios u ON u.id = rxu.usuario_id
+      WHERE rxu.role_id IN (${placeholders})
+        AND u.estado_id = 1
+        AND u.correo IS NOT NULL
+        AND u.correo <> ''`,
+    roleIds
+  );
+  return users || [];
+}
+
+const money = (value) =>
+  Number(value || 0).toLocaleString("es-CO", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+
+async function notifyCashDeskClosure(cuadre, totals) {
+  if (!cuadre) return;
+  const admins = await fetchAdminRecipients();
+  if (!admins.length) return;
+  const closingName =
+    cuadre.usuario_cierre_nombre || cuadre.usuario_cierre_id || "Usuario";
+  const subject = `Cierre de caja #${cuadre.id} - ${closingName}`;
+  const closedAt = new Date(cuadre.fecha_cierre || Date.now()).toLocaleString(
+    "es-CO"
+  );
+  const logo = getLogoDataUri();
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#222;">
+      ${
+        logo
+          ? `<div style="text-align:center;margin-bottom:10px;"><img src="${logo}" alt="Nativhos" style="height:60px" /></div>`
+          : ""
+      }
+      <h2 style="margin:0 0 8px;">Cierre de caja #${cuadre.id}</h2>
+      <p style="margin:0 0 12px;">${closingName} cerró la caja el ${closedAt}.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tbody>
+          <tr><td><strong>Caja inicial</strong></td><td style="text-align:right;">$ ${money(
+            cuadre.saldo_inicial
+          )}</td></tr>
+          <tr><td><strong>Ventas en efectivo</strong></td><td style="text-align:right;">$ ${money(
+            totals.cash
+          )}</td></tr>
+          <tr><td><strong>Ventas con datafono</strong></td><td style="text-align:right;">$ ${money(
+            totals.card
+          )}</td></tr>
+          <tr><td><strong>Ventas con transferencia</strong></td><td style="text-align:right;">$ ${money(
+            totals.transfer
+          )}</td></tr>
+          <tr><td><strong>Gastos</strong></td><td style="text-align:right;">$ ${money(
+            cuadre.gastos
+          )}</td></tr>
+          <tr><td><strong>Total caja</strong></td><td style="text-align:right;">$ ${money(
+            totals.totalCaja
+          )}</td></tr>
+          <tr><td><strong>Saldo real</strong></td><td style="text-align:right;">$ ${money(
+            cuadre.saldo_real
+          )}</td></tr>
+          <tr><td><strong>Saldo teórico</strong></td><td style="text-align:right;">$ ${money(
+            cuadre.saldo_teorico
+          )}</td></tr>
+          <tr><td><strong>Diferencia</strong></td><td style="text-align:right;">$ ${money(
+            cuadre.diferencia
+          )}</td></tr>
+        </tbody>
+      </table>
+      ${
+        cuadre.observaciones
+          ? `<p style="margin-top:12px;"><strong>Observaciones:</strong> ${cuadre.observaciones}</p>`
+          : ""
+      }
+    </div>
+  `;
+
+  const adminEmails = admins.map((a) => a.correo);
+  await sendEmail({ to: adminEmails, subject, html });
+
+  const message = `Cierre de caja #${cuadre.id} realizado por ${closingName}. Total caja: $${money(
+    totals.totalCaja
+  )}, saldo real: $${money(cuadre.saldo_real)}, diferencia: $${money(
+    cuadre.diferencia
+  )}.`;
+  const [alertRes] = await pool.query(
+    "INSERT INTO alertas (mensaje_alrt, created_at, updated_at) VALUES (?, NOW(), NOW())",
+    [message]
+  );
+  const alertaId = alertRes.insertId;
+  if (alertaId) {
+    const values = admins.map((adm) => [adm.id, alertaId]);
+    if (values.length) {
+      await pool.query(
+        `INSERT INTO alertas_x_usuarios (usuario_id, alerta_id, created_at, updated_at)
+         VALUES ${values.map(() => "(?, ?, NOW(), NOW())").join(",")}`,
+        values.flat()
+      );
+    }
+  }
+}

@@ -62,14 +62,22 @@ const broadcastDiscount = async (discount) => {
   if (!users.length) return;
 
   const html = buildDiscountHtml(discount);
-  for (const user of users) {
-    if (!user.email) continue;
+  const recipients = users
+    .map((user) => user.email)
+    .filter((email) => Boolean(email));
+  const chunkSize = 40;
+  for (let i = 0; i < recipients.length; i += chunkSize) {
+    const batch = recipients.slice(i, i + chunkSize);
+    if (!batch.length) continue;
     try {
       await sendEmail({
-        to: user.email,
+        to: batch,
         subject: `Nuevo descuento: ${discount.name}`,
         html,
       });
+      if (i + chunkSize < recipients.length) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
     } catch (err) {
       console.log("[discount email]", err?.message || err);
     }
