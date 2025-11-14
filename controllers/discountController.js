@@ -46,11 +46,43 @@ const buildDiscountHtml = (discount) => {
   )}</div>`;
 };
 
+const buildFlyerAttachment = (discount = {}) => {
+  const inline = discount.imageInline || discount.imageUrl;
+  if (!inline || typeof inline !== "string" || !inline.startsWith("data:")) {
+    return null;
+  }
+  const match = inline.match(/^data:(.*?);base64,(.+)$/);
+  if (!match) return null;
+  const mime = match[1] || "image/png";
+  const base64 = match[2];
+  try {
+    const buffer = Buffer.from(base64, "base64");
+    const cid = `discount-flyer-${discount._id || Date.now()}`;
+    return {
+      cid,
+      attachment: {
+        filename: `${(discount.name || "flyer")
+          .replace(/[^\w.-]+/g, "_")
+          .toLowerCase()}.${(mime.split("/")?.[1] || "png").split("+")[0]}`,
+        content: buffer,
+        contentType: mime,
+        cid,
+      },
+    };
+  } catch {
+    return null;
+  }
+};
+
 const broadcastDiscount = async (discount) => {
   const users = await User.findAll();
   if (!users.length) return;
 
-  const html = buildDiscountHtml(discount);
+  const flyer = buildFlyerAttachment(discount);
+  const discountForHtml = flyer
+    ? { ...discount, imageInline: `cid:${flyer.cid}` }
+    : discount;
+  const html = buildDiscountHtml(discountForHtml);
   const recipients = users
     .map((user) => user.email)
     .filter((email) => Boolean(email));
@@ -63,6 +95,7 @@ const broadcastDiscount = async (discount) => {
         to: batch,
         subject: `Nuevo descuento: ${discount.name}`,
         html,
+        attachments: flyer ? [flyer.attachment] : undefined,
       });
       if (i + chunkSize < recipients.length) {
         await new Promise((resolve) => setTimeout(resolve, 600));
