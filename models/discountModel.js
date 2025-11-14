@@ -1,17 +1,29 @@
 const { pool } = require("../config/mysql");
 
-const mapRow = (r) => ({
-  _id: r.id,
-  name: r.nombre,
-  value: r.valor,
-  percent: r.porciento,
-  active: !!r.is_activo,
-  message: r.mensaje || null,
-  imageUrl: r.imagen_path || null,
-  createdAt: r.created_at || null,
-  updatedAt: r.updated_at || null,
-  products: r.products || [],
-});
+const bufferToDataUri = (buffer, mime) => {
+  if (!buffer) return null;
+  const data = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  const type = mime || "image/png";
+  return `data:${type};base64,${data.toString("base64")}`;
+};
+
+const mapRow = (r) => {
+  const inline = bufferToDataUri(r.imagen_data, r.imagen_mime);
+  return {
+    _id: r.id,
+    name: r.nombre,
+    value: r.valor,
+    percent: r.porciento,
+    active: !!r.is_activo,
+    message: r.mensaje || null,
+    imageUrl: inline || r.imagen_path || null,
+    imageInline: inline,
+    imageMime: r.imagen_mime || null,
+    createdAt: r.created_at || null,
+    updatedAt: r.updated_at || null,
+    products: r.products || [],
+  };
+};
 
 const Discount = {};
 
@@ -46,7 +58,7 @@ async function fetchProducts(discountId) {
 
 Discount.findActive = async function () {
   const [rows] = await pool.query(
-    `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, created_at, updated_at
+    `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at
        FROM descuentos
       WHERE is_activo = 1
       ORDER BY updated_at DESC, id DESC`
@@ -60,7 +72,7 @@ Discount.findActive = async function () {
 
 Discount.findAll = async function () {
   const [rows] = await pool.query(
-    `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, created_at, updated_at
+    `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at
        FROM descuentos
       ORDER BY updated_at DESC, id DESC`
   );
@@ -73,7 +85,7 @@ Discount.findAll = async function () {
 
 Discount.findById = async function (id) {
   const [rows] = await pool.query(
-    `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, created_at, updated_at
+    `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at
        FROM descuentos
       WHERE id = ?
       LIMIT 1`,
@@ -92,12 +104,14 @@ Discount.create = async function ({
   active,
   message,
   imageUrl,
+  imageData,
+  imageMime,
   productIds,
 }) {
   const [res] = await pool.query(
     `INSERT INTO descuentos
-      (nombre, valor, porciento, is_activo, mensaje, imagen_path, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      (nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
     [
       name,
       value != null ? Number(value) : null,
@@ -105,6 +119,8 @@ Discount.create = async function ({
       active ? 1 : 0,
       message || null,
       imageUrl || null,
+      imageData || null,
+      imageMime || null,
     ]
   );
   await attachProducts(res.insertId, productIds);
@@ -124,22 +140,35 @@ Discount.updateById = async function (id, data) {
         : Number(current.percent),
     active: data.active !== undefined ? !!data.active : current.active,
     message: data.message !== undefined ? data.message : current.message,
-    imageUrl: data.imageUrl !== undefined ? data.imageUrl : current.imageUrl,
+    imageUrl: data.imageUrl,
+    imageData: data.imageData,
+    imageMime: data.imageMime,
   };
-  await pool.query(
-    `UPDATE descuentos
-        SET nombre = ?, valor = ?, porciento = ?, is_activo = ?, mensaje = ?, imagen_path = ?, updated_at = NOW()
-      WHERE id = ?`,
-    [
-      next.name,
-      next.value,
-      next.percent,
-      next.active ? 1 : 0,
-      next.message || null,
-      next.imageUrl || null,
-      id,
-    ]
-  );
+
+  const fields = [
+    { sql: "nombre = ?", value: next.name },
+    { sql: "valor = ?", value: next.value },
+    { sql: "porciento = ?", value: next.percent },
+    { sql: "is_activo = ?", value: next.active ? 1 : 0 },
+    { sql: "mensaje = ?", value: next.message || null },
+  ];
+
+  if (next.imageUrl !== undefined) {
+    fields.push({ sql: "imagen_path = ?", value: next.imageUrl || null });
+  }
+  if (next.imageData !== undefined) {
+    fields.push({ sql: "imagen_data = ?", value: next.imageData || null });
+  }
+  if (next.imageMime !== undefined) {
+    fields.push({ sql: "imagen_mime = ?", value: next.imageMime || null });
+  }
+
+  const setClause = fields.map((f) => f.sql).join(", ") + ", updated_at = NOW()";
+  const params = fields.map((f) => f.value);
+  params.push(id);
+
+  await pool.query(`UPDATE descuentos SET ${setClause} WHERE id = ?`, params);
+
   if (data.productIds) {
     await attachProducts(id, data.productIds);
   }

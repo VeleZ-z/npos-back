@@ -1,29 +1,18 @@
 const createHttpError = require("http-errors");
-const fs = require("fs");
-const path = require("path");
 const Discount = require("../models/discountModel");
 const User = require("../models/userModel");
 const { pool } = require("../config/mysql");
 const { sendEmail, buildAssetUrl } = require("../services/emailService");
-
-const flyersDir = path.resolve(__dirname, "..", "uploads", "discounts");
-
-const ensureFlyersDir = () => {
-  try {
-    fs.mkdirSync(flyersDir, { recursive: true });
-  } catch {}
-};
-
-const saveFlyer = (file) => {
-  if (!file) return null;
-  ensureFlyersDir();
-  const ext = path.extname(file.originalname) || ".png";
-  const filename = `${Date.now()}-${Math.random()
-    .toString(16)
-    .slice(2)}${ext}`;
-  const destPath = path.join(flyersDir, filename);
-  fs.writeFileSync(destPath, file.buffer);
-  return `/uploads/discounts/${filename}`;
+const processFlyer = (file) => {
+  if (!file) {
+    return { hasFile: false, imagePath: null, imageData: null, imageMime: null };
+  }
+  return {
+    hasFile: true,
+    imagePath: null,
+    imageData: file.buffer,
+    imageMime: file.mimetype || "image/png",
+  };
 };
 
 const buildDiscountHtml = (discount) => {
@@ -46,7 +35,7 @@ const buildDiscountHtml = (discount) => {
       .join("");
     lines.push(`<div><strong>Productos:</strong><ul>${list}</ul></div>`);
   }
-  const flyerUrl = buildAssetUrl(discount.imageUrl);
+  const flyerUrl = discount.imageInline || buildAssetUrl(discount.imageUrl);
   if (flyerUrl) {
     lines.push(
       `<div><img src="${flyerUrl}" alt="${discount.name}" style="max-width:400px;border-radius:12px"/></div>`
@@ -156,7 +145,7 @@ const createDiscount = async (req, res, next) => {
         )
       );
     }
-    const flyerPath = saveFlyer(req.file);
+    const flyer = processFlyer(req.file);
     const productIds = parseProductIds(productos ?? productoId);
     if (!productIds.length) {
       return next(createHttpError(400, "Selecciona un producto asociado"));
@@ -167,7 +156,9 @@ const createDiscount = async (req, res, next) => {
       percent: porciento != null ? Number(porciento) : null,
       active: is_activo !== undefined ? Boolean(Number(is_activo)) : true,
       message: mensaje || null,
-      imageUrl: flyerPath,
+      imageUrl: flyer.imagePath,
+      imageData: flyer.imageData,
+      imageMime: flyer.imageMime,
       productIds,
     });
     await broadcastDiscount(discount);
@@ -188,10 +179,7 @@ const updateDiscount = async (req, res, next) => {
     if (!existing) {
       return next(createHttpError(404, "Descuento no encontrado"));
     }
-    let flyerPath = existing.imageUrl;
-    if (req.file) {
-      flyerPath = saveFlyer(req.file);
-    }
+    const flyer = processFlyer(req.file);
     if (req.body.valor && req.body.porciento) {
       return next(
         createHttpError(
@@ -212,7 +200,9 @@ const updateDiscount = async (req, res, next) => {
       percent: req.body.porciento,
       active: req.body.is_activo,
       message: req.body.mensaje,
-      imageUrl: flyerPath,
+      imageUrl: flyer.hasFile ? flyer.imagePath : undefined,
+      imageData: flyer.hasFile ? flyer.imageData : undefined,
+      imageMime: flyer.hasFile ? flyer.imageMime : undefined,
       productIds,
     });
     res.json({

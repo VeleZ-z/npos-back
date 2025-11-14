@@ -191,6 +191,7 @@ const mapAttachmentForResend = (attachment) => {
 
 function buildAssetUrl(relativePath = "") {
   if (!relativePath) return null;
+  if (/^data:/i.test(relativePath)) return relativePath;
   if (/^https?:\/\//i.test(relativePath)) return relativePath;
   if (!assetBaseUrl) return relativePath;
   return `${assetBaseUrl.replace(/\/$/, "")}/${relativePath.replace(/^\//, "")}`;

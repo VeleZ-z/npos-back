@@ -110,6 +110,8 @@ async function run() {
         porciento INT(10) UNSIGNED DEFAULT NULL,
         mensaje TEXT DEFAULT NULL,
         imagen_path VARCHAR(255) DEFAULT NULL,
+        imagen_data LONGBLOB NULL,
+        imagen_mime VARCHAR(100) DEFAULT NULL,
         is_activo TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
         created_at TIMESTAMP NULL DEFAULT NULL,
         updated_at TIMESTAMP NULL DEFAULT NULL
