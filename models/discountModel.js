@@ -1,5 +1,33 @@
 const { pool } = require("../config/mysql");
 
+async function columnExists(conn, table, column) {
+  const [rows] = await conn.query("SHOW COLUMNS FROM ?? LIKE ?", [table, column]);
+  return rows.length > 0;
+}
+
+let imageColumnsEnsured = false;
+async function ensureImageColumns() {
+  if (imageColumnsEnsured) return;
+  const conn = await pool.getConnection();
+  try {
+    const hasData = await columnExists(conn, "descuentos", "imagen_data");
+    if (!hasData) {
+      await conn.query(
+        "ALTER TABLE descuentos ADD COLUMN imagen_data LONGBLOB NULL AFTER imagen_path"
+      );
+    }
+    const hasMime = await columnExists(conn, "descuentos", "imagen_mime");
+    if (!hasMime) {
+      await conn.query(
+        "ALTER TABLE descuentos ADD COLUMN imagen_mime VARCHAR(100) NULL AFTER imagen_data"
+      );
+    }
+    imageColumnsEnsured = true;
+  } finally {
+    conn.release();
+  }
+}
+
 const bufferToDataUri = (buffer, mime) => {
   if (!buffer) return null;
   const data = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
@@ -57,6 +85,7 @@ async function fetchProducts(discountId) {
 }
 
 Discount.findActive = async function () {
+  await ensureImageColumns();
   const [rows] = await pool.query(
     `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at
        FROM descuentos
@@ -71,6 +100,7 @@ Discount.findActive = async function () {
 };
 
 Discount.findAll = async function () {
+  await ensureImageColumns();
   const [rows] = await pool.query(
     `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at
        FROM descuentos
@@ -84,6 +114,7 @@ Discount.findAll = async function () {
 };
 
 Discount.findById = async function (id) {
+  await ensureImageColumns();
   const [rows] = await pool.query(
     `SELECT id, nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at
        FROM descuentos
@@ -108,6 +139,7 @@ Discount.create = async function ({
   imageMime,
   productIds,
 }) {
+  await ensureImageColumns();
   const [res] = await pool.query(
     `INSERT INTO descuentos
       (nombre, valor, porciento, is_activo, mensaje, imagen_path, imagen_data, imagen_mime, created_at, updated_at)
@@ -128,6 +160,7 @@ Discount.create = async function ({
 };
 
 Discount.updateById = async function (id, data) {
+  await ensureImageColumns();
   const current = await Discount.findById(id);
   if (!current) return null;
   const next = {
