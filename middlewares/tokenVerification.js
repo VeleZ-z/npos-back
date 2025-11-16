@@ -6,7 +6,8 @@ const User = require("../models/userModel");
 
 const isVerifiedUser = async (req, res, next) => {
     try{
-
+        // Guest mode: allow limited access when explicitly requested
+        const wantsGuest = String(req.headers['x-guest'] || req.query.guest || '').toLowerCase() === '1' || req.query.guest === true || req.query.guest === 'true';
         let token = req.cookies?.accessToken;
         const authHeader = req.headers['authorization'] || req.headers['Authorization'];
         if (!token && authHeader && authHeader.startsWith('Bearer ')) {
@@ -14,6 +15,10 @@ const isVerifiedUser = async (req, res, next) => {
         }
 
         if(!token){
+            if (wantsGuest) {
+                req.user = { _id: null, role: 'Customer', guest: true, name: 'Invitado' };
+                return next();
+            }
             const error = createHttpError(401, "Please provide token!");
             return next(error);
         }

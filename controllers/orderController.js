@@ -59,17 +59,17 @@ const addOrder = async (req, res, next) => {
   try {
     const body = req.body || {};
     const currentUserId = normalizeUserId(req.user?._id);
-    // If user is Customer, enforce initial status and attach userId to customer
+    // If user is Customer (or guest treated as Customer), enforce initial status and attach userId to customer
     if (req.user?.role === 'Customer') {
       body.orderStatus = 'POR_APROBAR';
       body.paymentStatus = body.paymentStatus || 'PENDIENTE';
       body.customer = {
         ...(body.customer || {}),
-        userId: req.user._id,
-        name: body.customer?.name || req.user.name,
-        email: body.customer?.email || req.user.email,
+        userId: req.user._id || null,
+        name: body.customer?.name || req.user.name || body.customer?.phone || "Invitado",
+        email: body.customer?.email || req.user.email || null,
       };
-      body.customerUserId = currentUserId;
+      body.customerUserId = currentUserId || null;
     } else if (ROLE_STAFF.has(req.user?.role)) {
       body.cashierUserId = currentUserId;
     }
@@ -751,6 +751,5 @@ async function deleteOrder(req, res, next) {
 }
 
 module.exports.deleteOrder = deleteOrder;
-
 
 
