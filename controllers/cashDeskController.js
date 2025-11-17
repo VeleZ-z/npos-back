@@ -82,13 +82,21 @@ async function fetchMovements(cuadreId) {
   const [rows] = await pool.query(
     `SELECT f.id,
             f.numero_factura,
+            f.subTotal,
+            f.impuestos,
             f.total,
             f.propina,
+            f.monto,
+            f.cambio,
             f.created_at,
+            f.updated_at,
+            f.cuadre_id,
             mp.nombre AS metodo_pago,
-            f.pedido_id
+            f.pedido_id,
+            ef.nombre AS estado_factura
        FROM facturas f
   LEFT JOIN metodos_pagos mp ON mp.id = f.metodos_pago_id
+  LEFT JOIN estados ef ON ef.id = f.estado_factura_id
       WHERE f.cuadre_id = ?
       ORDER BY f.created_at ASC`,
     [cuadreId]
@@ -361,17 +369,28 @@ const exportCashDeskMovements = async (req, res, next) => {
     const sheet = workbook.addWorksheet("Movimientos");
     sheet.columns = [
       { header: "Factura", key: "numero_factura", width: 15 },
+      { header: "Estado", key: "estado_factura", width: 16 },
       { header: "Pedido", key: "pedido_id", width: 10 },
+      { header: "Cuadre", key: "cuadre_id", width: 10 },
       { header: "Método", key: "metodo_pago", width: 20 },
-      { header: "Total", key: "total", width: 15 },
-      { header: "Propina", key: "propina", width: 15 },
-      { header: "Fecha", key: "created_at", width: 20 },
+      { header: "Subtotal", key: "subTotal", width: 14 },
+      { header: "Impuestos", key: "impuestos", width: 14 },
+      { header: "Propina", key: "propina", width: 14 },
+      { header: "Total", key: "total", width: 14 },
+      { header: "Monto entregado", key: "monto", width: 16 },
+      { header: "Cambio", key: "cambio", width: 12 },
+      { header: "Fecha creación", key: "created_at", width: 20 },
+      { header: "Última actualización", key: "updated_at", width: 20 },
     ];
     movements.forEach((movement) => {
       sheet.addRow({
         ...movement,
+        subTotal: Number(movement.subTotal || 0),
+        impuestos: Number(movement.impuestos || 0),
         total: Number(movement.total || 0),
         propina: Number(movement.propina || 0),
+        monto: Number(movement.monto || 0),
+        cambio: Number(movement.cambio || 0),
       });
     });
     res.setHeader(
