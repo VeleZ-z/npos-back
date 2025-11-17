@@ -131,6 +131,39 @@ const mapCuadreResponse = (cuadre, totals) => {
   };
 };
 
+const mapHistoryRow = (row) => {
+  const totals = {
+    cash: Number(row.total_cash || 0),
+    card: Number(row.total_card || 0),
+    transfer: Number(row.total_transfer || 0),
+  };
+  const totalCaja =
+    Number(row.saldo_inicial || 0) + totals.cash - Number(row.gastos || 0);
+  return {
+    id: row.id,
+    openedAt: row.fecha_apertura,
+    closedAt: row.fecha_cierre,
+    openingUser: {
+      id: row.usuario_apertura_id,
+      name: row.usuario_apertura_nombre || null,
+    },
+    closingUser: row.usuario_cierre_id
+      ? {
+          id: row.usuario_cierre_id,
+          name: row.usuario_cierre_nombre || null,
+        }
+      : null,
+    estado: row.estado_nombre,
+    saldoInicial: Number(row.saldo_inicial || 0),
+    saldoReal: Number(row.saldo_real || 0),
+    saldoTeorico: Number(row.saldo_teorico || 0),
+    diferencia: Number(row.diferencia || 0),
+    gastos: Number(row.gastos || 0),
+    totals: { ...totals, totalCaja },
+    invoicesCount: Number(row.facturas_count || 0),
+  };
+};
+
 const getCurrentCashDesk = async (req, res, next) => {
   try {
     const cuadre = await fetchActiveCuadre();
@@ -268,6 +301,51 @@ const getCashDeskMovements = async (req, res, next) => {
   }
 };
 
+const listCashDeskHistory = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const filters = [];
+    const params = [];
+    if (startDate) {
+      filters.push("c.fecha_apertura >= ?");
+      params.push(new Date(startDate));
+    }
+    if (endDate) {
+      filters.push("c.fecha_apertura <= ?");
+      params.push(new Date(endDate));
+    }
+    const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const [rows] = await pool.query(
+      `
+      SELECT
+        c.*,
+        ua.nombre AS usuario_apertura_nombre,
+        uc.nombre AS usuario_cierre_nombre,
+        e.nombre  AS estado_nombre,
+        COUNT(f.id) AS facturas_count,
+        SUM(CASE WHEN LOWER(mp.nombre) LIKE '%efect%' THEN (f.total + IFNULL(f.propina,0)) ELSE 0 END) AS total_cash,
+        SUM(CASE WHEN LOWER(mp.nombre) LIKE '%datafon%' THEN (f.total + IFNULL(f.propina,0)) ELSE 0 END) AS total_card,
+        SUM(CASE WHEN LOWER(mp.nombre) NOT LIKE '%efect%' AND LOWER(mp.nombre) NOT LIKE '%datafon%' THEN (f.total + IFNULL(f.propina,0)) ELSE 0 END) AS total_transfer
+      FROM cuadres c
+      LEFT JOIN usuarios ua ON ua.id = c.usuario_apertura_id
+      LEFT JOIN usuarios uc ON uc.id = c.usuario_cierre_id
+      LEFT JOIN estados e ON e.id = c.estado_id
+      LEFT JOIN facturas f ON f.cuadre_id = c.id
+      LEFT JOIN metodos_pagos mp ON mp.id = f.metodos_pago_id
+      ${whereClause}
+      GROUP BY c.id
+      ORDER BY c.fecha_apertura DESC
+      LIMIT 200;
+    `,
+      params
+    );
+    const data = (rows || []).map(mapHistoryRow);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const exportCashDeskMovements = async (req, res, next) => {
   try {
     const { cuadreId } = req.query;
@@ -316,6 +394,7 @@ module.exports = {
   openCashDesk,
   closeCashDesk,
   getCashDeskMovements,
+  listCashDeskHistory,
   exportCashDeskMovements,
 };
 

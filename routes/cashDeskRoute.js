@@ -4,6 +4,7 @@ const {
   openCashDesk,
   closeCashDesk,
   getCashDeskMovements,
+  listCashDeskHistory,
   exportCashDeskMovements,
 } = require("../controllers/cashDeskController");
 const {
@@ -19,6 +20,7 @@ router.get("/current", getCurrentCashDesk);
 router.post("/open", openCashDesk);
 router.post("/close", closeCashDesk);
 router.get("/movements", getCashDeskMovements);
+router.get("/history", listCashDeskHistory);
 router.get("/export", exportCashDeskMovements);
 
 module.exports = router;
