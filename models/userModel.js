@@ -185,7 +185,9 @@ User.updateByAdmin = async function (id, { documento, telefono, tipo_doc_id, cum
 };
 
 User.listRoles = async function () {
-  const [rows] = await pool.query("SELECT id as _id, nombre as name FROM roles GROUP BY id, nombre ORDER BY nombre ASC");
+  const [rows] = await pool.query(
+    "SELECT MIN(id) as _id, nombre as name FROM roles GROUP BY nombre ORDER BY nombre ASC"
+  );
   return rows;
 };
 
