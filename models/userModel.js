@@ -18,13 +18,9 @@ class UserDoc {
   }
 
   async save() {
-    // Ensure role exists in `roles` only if provided
+    // Resolve role id (must exist beforehand)
     let roleId = null;
     if (this.role) {
-      await pool.query(
-        "INSERT IGNORE INTO roles (nombre, created_at, updated_at) VALUES (?, NOW(), NOW())",
-        [this.role]
-      );
       const [[roleRow]] = await pool.query(
         "SELECT id FROM roles WHERE nombre = ? LIMIT 1",
         [this.role]
@@ -63,7 +59,9 @@ class UserDoc {
     // Insert usuario (if not exists by correo)
     const [existing] = await pool.query("SELECT id FROM usuarios WHERE correo = ? LIMIT 1", [this.email]);
     if (existing.length === 0) {
-      try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS social_id VARCHAR(255) NOT NULL DEFAULT ''"); } catch {}
+      try {
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS social_id VARCHAR(255) NOT NULL DEFAULT ''");
+      } catch {}
       const [ins] = await pool.query(
         "INSERT INTO usuarios (nombre, correo, telefono, social_id, estado_id, tipo_doc_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
         [this.name, this.email, this.phone?.toString() || null, this.socialId || '', estadoId, tipoDocId]
@@ -72,7 +70,9 @@ class UserDoc {
     } else {
       this._id = existing[0].id;
       if (this.socialId) {
-        try { await pool.query("UPDATE usuarios SET social_id = ? WHERE id = ? AND (social_id IS NULL OR social_id = '')", [this.socialId, this._id]); } catch {}
+        try {
+          await pool.query("UPDATE usuarios SET social_id = ? WHERE id = ? AND (social_id IS NULL OR social_id = '')", [this.socialId, this._id]);
+        } catch {}
       }
     }
 
@@ -218,11 +218,14 @@ User.searchByTerm = async function (term, limit = 15) {
   const likeRaw = `%${term.trim()}%`;
   const size = Number.isFinite(Number(limit)) ? Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50) : 15;
   const [rows] = await pool.query(
-    `SELECT u.id, u.nombre, u.correo, u.telefono
+    `SELECT u.id, u.nombre, u.correo, u.telefono, u.documento, u.tipo_doc_id, u.cumpleanos,
+            COALESCE(r.nombre,'Customer') as role
        FROM usuarios u
+  LEFT JOIN roles_x_usuarios rxu ON rxu.usuario_id = u.id
+  LEFT JOIN roles r ON r.id = rxu.role_id
       WHERE LOWER(u.nombre) LIKE ?
          OR LOWER(u.correo) LIKE ?
-         OR u.telefono LIKE ?
+         OR u.documento LIKE ?
       ORDER BY u.nombre ASC
       LIMIT ?`,
     [like, like, likeRaw, size]
@@ -232,19 +235,30 @@ User.searchByTerm = async function (term, limit = 15) {
     name: row.nombre,
     email: row.correo,
     phone: row.telefono ? String(row.telefono) : null,
+    document: row.documento || null,
+    docTypeId: row.tipo_doc_id || null,
+    birthday: row.cumpleanos || null,
+    role: row.role || "Customer",
   }));
 };
 
 // Assign or update a user's role mapping in roles_x_usuarios (and usuarios_passwords.role if present)
 User.setRole = async function (userId, roleName) {
   if (!userId || !roleName) return;
-  // Ensure role exists
-  const [[roleRow]] = await pool.query("SELECT id FROM roles WHERE nombre = ? LIMIT 1", [roleName]);
-  let roleId = roleRow?.id || null;
-  if (!roleId) {
+  const normalized = String(roleName).trim();
+  if (!normalized) return;
+  // Ensure role exists, create once if missing (case-insensitive)
+  let roleId = null;
+  const [[roleRow]] = await pool.query(
+    "SELECT id FROM roles WHERE LOWER(nombre) = LOWER(?) LIMIT 1",
+    [normalized]
+  );
+  if (roleRow?.id) {
+    roleId = roleRow.id;
+  } else {
     const [insRole] = await pool.query(
       "INSERT INTO roles (nombre, created_at, updated_at) VALUES (?, NOW(), NOW())",
-      [roleName]
+      [normalized]
     );
     roleId = insRole.insertId;
   }

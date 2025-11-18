@@ -34,7 +34,8 @@ async function run() {
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         nombre VARCHAR(255) NOT NULL,
         created_at TIMESTAMP NULL DEFAULT NULL,
-        updated_at TIMESTAMP NULL DEFAULT NULL
+        updated_at TIMESTAMP NULL DEFAULT NULL,
+        UNIQUE KEY uq_roles_nombre (nombre)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
@@ -370,8 +371,8 @@ async function run() {
         descuento_nombre VARCHAR(255) DEFAULT NULL,
         descuento_tipo VARCHAR(20) DEFAULT NULL,
         descuento_valor DECIMAL(10,2) DEFAULT NULL,
-        created_at TIMESTAMP NULL DEFAULT NULL,
-        updated_at TIMESTAMP NULL DEFAULT NULL,
+        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         KEY productos_x_pedidos_producto_id_foreign (producto_id),
         KEY productos_x_pedidos_pedido_id_foreign (pedido_id),
         KEY fk_pxp_descuento (descuento_id),
