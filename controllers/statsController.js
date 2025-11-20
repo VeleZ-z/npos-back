@@ -1,19 +1,10 @@
 const { pool } = require("../config/mysql");
+const { getDashboardMetrics } = require("../services/metricsService");
 
 const parseDate = (value) => {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const computeChangePct = (current, previous) => {
-  const prev = Number(previous || 0);
-  const curr = Number(current || 0);
-  if (prev === 0) {
-    if (curr === 0) return 0;
-    return 100;
-  }
-  return ((curr - prev) / prev) * 100;
 };
 
 const getPopularProducts = async (req, res, next) => {
@@ -78,71 +69,8 @@ const getPopularProducts = async (req, res, next) => {
 
 const getTodaySummary = async (req, res, next) => {
   try {
-    const startToday = new Date();
-    startToday.setHours(0, 0, 0, 0);
-    const endToday = new Date();
-    endToday.setHours(23, 59, 59, 999);
-
-    const startYesterday = new Date(startToday);
-    startYesterday.setDate(startYesterday.getDate() - 1);
-    const endYesterday = new Date(startToday.getTime() - 1);
-
-    const [[salesTodayRow]] = await pool.query(
-      "SELECT COALESCE(SUM(total + COALESCE(propina,0)),0) AS total FROM facturas WHERE created_at BETWEEN ? AND ?",
-      [startToday, endToday]
-    );
-    const [[salesYesterdayRow]] = await pool.query(
-      "SELECT COALESCE(SUM(total + COALESCE(propina,0)),0) AS total FROM facturas WHERE created_at BETWEEN ? AND ?",
-      [startYesterday, endYesterday]
-    );
-
-    const salesToday = Number(salesTodayRow?.total || 0);
-    const salesYesterday = Number(salesYesterdayRow?.total || 0);
-
-    const activeSql = `
-      SELECT COUNT(*) AS total
-        FROM pedidos p
-        LEFT JOIN estados e ON e.id = p.estado_id
-       WHERE p.created_at BETWEEN ? AND ?
-         AND (e.id IS NULL OR UPPER(e.nombre) NOT IN ('CERRADO','PAGADO'))
-    `;
-    const [[activeTodayRow]] = await pool.query(activeSql, [
-      startToday,
-      endToday,
-    ]);
-    const [[activeYesterdayRow]] = await pool.query(activeSql, [
-      startYesterday,
-      endYesterday,
-    ]);
-    const activeToday = Number(activeTodayRow?.total || 0);
-    const activeYesterday = Number(activeYesterdayRow?.total || 0);
-
-    const [[categoriesRow]] = await pool.query(
-      "SELECT COUNT(*) AS total FROM categorias"
-    );
-    const [[productsRow]] = await pool.query(
-      "SELECT COUNT(*) AS total FROM productos"
-    );
-    const [[tablesRow]] = await pool.query(
-      "SELECT COUNT(*) AS total FROM mesas"
-    );
-
-    res.json({
-      success: true,
-      data: {
-        salesToday,
-        salesYesterday,
-        salesChangePct: computeChangePct(salesToday, salesYesterday),
-        activeToday,
-        activeYesterday,
-        activeChangePct: computeChangePct(activeToday, activeYesterday),
-        counts: {
-          categories: Number(categoriesRow?.total || 0),
-          products: Number(productsRow?.total || 0),
-          tables: Number(tablesRow?.total || 0),
-        },
-      },
-    });
+    const data = await getDashboardMetrics();
+    res.json({ success: true, data });
   } catch (error) {
     next(error);
   }
