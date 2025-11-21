@@ -10,6 +10,7 @@ class PurchaseDoc {
     this.expirationDate = data.expirationDate || data.vencimiento || null;
     this.cost = Number(data.cost ?? data.costo ?? 0);
     this.estadoCompraId = data.estadoCompraId ?? data.estado_compra_id ?? null;
+    this.estadoCompraName = data.estadoCompraName ?? data.estado_compra_nombre ?? null;
     this.providerId = data.providerId ?? data.proveedore_id ?? null;
     this.alertMinStock = data.alertMinStock ?? data.alerta_min_stock ?? null;
     this.alertaId = data.alertaId ?? data.alerta_id ?? null;
@@ -45,12 +46,14 @@ const Purchase = function PurchaseFactory(data) {
 Purchase.find = async function () {
   const [rows] = await pool.query(
     `SELECT c.id, c.nombre, c.cantidad, c.stock, c.entrega, c.vencimiento, c.costo, c.unidad_medida,
-            c.estado_compra_id, c.proveedore_id, c.alerta_min_stock, c.alerta_id,
+            c.estado_compra_id, e.nombre AS estado_compra_nombre,
+            c.proveedore_id, c.alerta_min_stock, c.alerta_id,
             a.mensaje_alrt AS alerta_mensaje,
             p.nombre AS proveedor
        FROM compras c
   LEFT JOIN proveedores p ON p.id = c.proveedore_id
   LEFT JOIN alertas a ON a.id = c.alerta_id
+  LEFT JOIN estados e ON e.id = c.estado_compra_id
    ORDER BY c.updated_at DESC, c.id DESC`
   );
   return rows.map(r => new PurchaseDoc({
@@ -62,6 +65,7 @@ Purchase.find = async function () {
     vencimiento: r.vencimiento,
     costo: r.costo,
     estado_compra_id: r.estado_compra_id,
+    estado_compra_nombre: r.estado_compra_nombre,
     proveedore_id: r.proveedore_id,
     alerta_min_stock: r.alerta_min_stock,
     alerta_id: r.alerta_id,
@@ -74,12 +78,14 @@ Purchase.find = async function () {
 Purchase.findById = async function (id) {
   const [rows] = await pool.query(
     `SELECT c.id, c.nombre, c.cantidad, c.stock, c.entrega, c.vencimiento, c.costo, c.unidad_medida,
-            c.estado_compra_id, c.proveedore_id, c.alerta_min_stock, c.alerta_id,
+            c.estado_compra_id, e.nombre AS estado_compra_nombre,
+            c.proveedore_id, c.alerta_min_stock, c.alerta_id,
             a.mensaje_alrt AS alerta_mensaje,
             p.nombre AS proveedor
        FROM compras c
   LEFT JOIN proveedores p ON p.id = c.proveedore_id
   LEFT JOIN alertas a ON a.id = c.alerta_id
+  LEFT JOIN estados e ON e.id = c.estado_compra_id
       WHERE c.id = ?
       LIMIT 1`,
     [id]
@@ -95,6 +101,7 @@ Purchase.findById = async function (id) {
     vencimiento: r.vencimiento,
     costo: r.costo,
     estado_compra_id: r.estado_compra_id,
+    estado_compra_nombre: r.estado_compra_nombre,
     proveedore_id: r.proveedore_id,
     alerta_min_stock: r.alerta_min_stock,
     alerta_id: r.alerta_id,
