@@ -15,16 +15,11 @@ const sumFacturasBetween = async (start, end) => {
   return Number(row?.total || 0);
 };
 
-const countActiveOrdersBetween = async (start, end) => {
-  const sql = `
-    SELECT COUNT(*) AS total
-      FROM pedidos p
-      LEFT JOIN estados e ON e.id = p.estado_id
-     WHERE p.created_at >= ?
-       AND p.created_at <= ?
-       AND (e.id IS NULL OR UPPER(e.nombre) NOT IN ('CERRADO','PAGADO'))
-  `;
-  const [[row]] = await pool.query(sql, [start, end]);
+const countFacturasBetween = async (start, end) => {
+  const [[row]] = await pool.query(
+    "SELECT COUNT(*) AS total FROM facturas WHERE created_at >= ? AND created_at <= ?",
+    [start, end]
+  );
   return Number(row?.total || 0);
 };
 
@@ -55,20 +50,20 @@ const getDailyMetrics = async () => {
   startYesterday.setDate(startYesterday.getDate() - 1);
   const endYesterday = new Date(startToday.getTime() - 1);
 
-  const [salesToday, salesYesterday, activeToday, activeYesterday] = await Promise.all([
+  const [salesToday, salesYesterday, invoicedToday, invoicedYesterday] = await Promise.all([
     sumFacturasBetween(startToday, endToday),
     sumFacturasBetween(startYesterday, endYesterday),
-    countActiveOrdersBetween(startToday, endToday),
-    countActiveOrdersBetween(startYesterday, endYesterday),
+    countFacturasBetween(startToday, endToday),
+    countFacturasBetween(startYesterday, endYesterday),
   ]);
 
   return {
     salesToday,
     salesYesterday,
     salesChangePct: computeChangePct(salesToday, salesYesterday),
-    activeToday,
-    activeYesterday,
-    activeChangePct: computeChangePct(activeToday, activeYesterday),
+    invoicedToday,
+    invoicedYesterday,
+    invoicedChangePct: computeChangePct(invoicedToday, invoicedYesterday),
   };
 };
 
@@ -87,20 +82,20 @@ const getMonthlyMetrics = async () => {
   );
   const endPrevious = new Date(startCurrent.getTime() - 1);
 
-  const [salesMonth, salesPrevMonth, activeMonth, activePrevMonth] = await Promise.all([
+  const [salesMonth, salesPrevMonth, invoicedMonth, invoicedPrevMonth] = await Promise.all([
     sumFacturasBetween(startCurrent, endCurrent),
     sumFacturasBetween(startPrevious, endPrevious),
-    countActiveOrdersBetween(startCurrent, endCurrent),
-    countActiveOrdersBetween(startPrevious, endPrevious),
+    countFacturasBetween(startCurrent, endCurrent),
+    countFacturasBetween(startPrevious, endPrevious),
   ]);
 
   return {
     salesMonth,
     salesPrevMonth,
     salesMonthChangePct: computeChangePct(salesMonth, salesPrevMonth),
-    activeMonth,
-    activePrevMonth,
-    activeMonthChangePct: computeChangePct(activeMonth, activePrevMonth),
+    invoicedMonth,
+    invoicedPrevMonth,
+    invoicedMonthChangePct: computeChangePct(invoicedMonth, invoicedPrevMonth),
   };
 };
 
