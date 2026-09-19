@@ -644,8 +644,9 @@ const createInvoice = async (req, res, next) => {
     }
 
     // Verificar permisos (solo cajeros y admin)
-    const role = String(req.user?.role || "").toLowerCase();
-    if (!["cashier", "administrator", "admin"].includes(role)) {
+    const role = String(req.user?.role || "").trim().toLowerCase();
+    const normalizedRole = role === "administrator" || role === "administrador" ? "admin" : role;
+    if (!["cashier", "admin"].includes(normalizedRole)) {
       return next(createHttpError(403, "Solo cajeros pueden generar facturas"));
     }
 
@@ -1060,7 +1061,9 @@ const cancelInvoice = async (req, res, next) => {
     }
 
     // Solo admin puede anular facturas
-    if (req.user.role !== "Administrator") {
+    const cancelRole = String(req.user?.role || "").trim().toLowerCase();
+    const normalizedCancelRole = cancelRole === "administrator" || cancelRole === "administrador" ? "admin" : cancelRole;
+    if (normalizedCancelRole !== "admin") {
       return next(createHttpError(403, "Solo administradores pueden anular facturas"));
     }
 

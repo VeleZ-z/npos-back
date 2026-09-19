@@ -40,12 +40,26 @@ const isVerifiedUser = async (req, res, next) => {
     }
 }
 
-const normalize = (v) => String(v || "").trim().toLowerCase();
+const normalizeRole = (v) => String(v || "").trim().toLowerCase();
+
+const ROLE_ALIASES = {
+    'administrator': 'admin',
+    'administrador': 'admin',
+    'cajero': 'cashier',
+    'mesero': 'waiter',
+    'cliente': 'customer',
+    'client': 'customer'
+};
+
+const resolveRole = (role) => {
+    const normalized = normalizeRole(role);
+    return ROLE_ALIASES[normalized] || normalized;
+};
 
 const authorizeRoles = (...allowed) => {
-    const allowSet = new Set(allowed.map(normalize));
+    const allowSet = new Set(allowed.map(resolveRole));
     return (req, res, next) => {
-        const role = normalize(req?.user?.role || '');
+        const role = resolveRole(req?.user?.role || '');
         if (!role) return next(createHttpError(403, 'Forbidden'));
         if (!allowSet.has(role)) return next(createHttpError(403, 'Forbidden'));
         next();
