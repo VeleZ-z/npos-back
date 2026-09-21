@@ -9,10 +9,10 @@ const normalizeId = (value) => {
   return Number.isFinite(num) && num > 0 ? num : null;
 };
 
-const estadoCache = {};
+const estadoCache = new Map();
 async function getEstadoId(nombre) {
   const key = String(nombre || "").toUpperCase();
-  if (estadoCache[key]) return estadoCache[key];
+  if (estadoCache.has(key)) return estadoCache.get(key);
   const [[row]] = await pool.query(
     "SELECT id FROM estados WHERE UPPER(nombre) = ? AND tipo = 7 LIMIT 1",
     [key]
@@ -23,7 +23,7 @@ async function getEstadoId(nombre) {
       `Estado ${key} (tipo=7) no encontrado, ejecuta la migración de cuadres`
     );
   }
-  estadoCache[key] = row.id;
+  estadoCache.set(key, row.id);
   return row.id;
 }
 

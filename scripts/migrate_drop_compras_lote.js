@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  Migration: Drop compras.codigo_lote if it exists.
 */

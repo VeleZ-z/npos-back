@@ -15,8 +15,7 @@ function getEmailDomain(email) {
     return at.length === 2 ? at[1].toLowerCase() : '';
 }
 
-function determineRoleByEmail(email) {
-    const roleCfg = config.authRoles || {};
+function determineRoleByEmail(email, roleCfg = config.authRoles || {}) {
     const domain = getEmailDomain(email);
     const inList = (list, val) => Array.isArray(list) && list.some(e => String(e).toLowerCase() === String(val).toLowerCase());
 
@@ -295,3 +294,7 @@ module.exports.getRoles = async (req, res, next) => {
     res.status(200).json({ success: true, data: roles });
   } catch (e) { next(e); }
 };
+
+// Exported for unit testing (no behavior change)
+module.exports.determineRoleByEmail = determineRoleByEmail;
+module.exports.getEmailDomain = getEmailDomain;

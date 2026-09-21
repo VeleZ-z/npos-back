@@ -34,7 +34,7 @@ const isVerifiedUser = async (req, res, next) => {
         req.user = user;
         next();
 
-    }catch (error) {
+    }catch {
         const err = createHttpError(401, "Invalid Token!");
         next(err);
     }
@@ -53,7 +53,11 @@ const ROLE_ALIASES = {
 
 const resolveRole = (role) => {
     const normalized = normalizeRole(role);
-    return ROLE_ALIASES[normalized] || normalized;
+    // Justificación: Object.hasOwn evita lookups heredados del prototype
+    // (p. ej. 'toString' devolvía una función); el acceso computado restante
+    // es seguro porque normalized es un string trim/lowercase sin '.'/'__proto__'.
+    // eslint-disable-next-line security/detect-object-injection
+    return Object.hasOwn(ROLE_ALIASES, normalized) ? ROLE_ALIASES[normalized] : normalized;
 };
 
 const authorizeRoles = (...allowed) => {
@@ -66,4 +70,4 @@ const authorizeRoles = (...allowed) => {
     }
 }
 
-module.exports = { isVerifiedUser, authorizeRoles };
+module.exports = { isVerifiedUser, authorizeRoles, normalizeRole, resolveRole };

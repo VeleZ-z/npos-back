@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  Migration: Add usuarios.cumpleanos (DATE) if missing.
 */
@@ -10,7 +9,7 @@ async function run() {
     console.log("[1/1] Add cumpleanos (DATE) to usuarios if missing");
     try {
       await conn.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cumpleanos DATE NULL AFTER telefono");
-    } catch (e) {
+    } catch {
       const [cols] = await conn.query("SHOW COLUMNS FROM usuarios LIKE 'cumpleanos'");
       if (cols.length === 0) {
         await conn.query("ALTER TABLE usuarios ADD COLUMN cumpleanos DATE NULL AFTER telefono");

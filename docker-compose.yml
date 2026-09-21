@@ -1,0 +1,55 @@
+services:
+  # Dev: persistent MySQL + API (docker compose --profile dev up -d)
+  db:
+    image: mysql:8.4
+    container_name: npos-mysql
+    profiles: ["dev"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pw}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-npos}
+      MYSQL_USER: ${MYSQL_USER:-npos}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-npos_pw}
+    ports:
+      - "3306:3306"
+    volumes:
+      - npos-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root_pw}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: npos-back:local
+    container_name: npos-api
+    profiles: ["dev"]
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - "${PORT:-8000}:8000"
+
+  # Test: ephemeral MySQL for the integration suite (docker compose --profile test up -d db-test)
+  db-test:
+    image: mysql:8.4
+    container_name: npos-mysql-test
+    profiles: ["test"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pw
+      MYSQL_DATABASE: npos_test
+      MYSQL_USER: npos_test
+      MYSQL_PASSWORD: npos_test_pw
+    ports:
+      - "3306:3306"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_pw"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  npos-mysql-data:

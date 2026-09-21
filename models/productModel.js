@@ -60,7 +60,7 @@ class ProductDoc {
           this.categoryId,
         ]
       );
-    } catch (e) {
+    } catch {
       // Si aun existen columnas antiguas, inserta con defaults de transicion
       [res] = await pool.query(
         `INSERT INTO productos (nombre, precio, costo, cantidad, alerta_min_stock, alerta_id, activo, estado_id, categoria_id, created_at, updated_at)

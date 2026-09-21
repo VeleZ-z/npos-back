@@ -1,10 +1,17 @@
 {
   "name": "pos-backend",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon app.js",
-    "start": "node app.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",

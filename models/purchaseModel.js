@@ -26,7 +26,7 @@ class PurchaseDoc {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
         [this.name, this.quantity, this.quantity, this.deliveryDate, this.expirationDate, this.cost, this.unit, this.estadoCompraId, this.providerId, this.alertMinStock, this.alertaId]
       );
-    } catch (e) {
+    } catch {
       // fallback if alerta_* columns don't exist yet
       [res] = await pool.query(
         `INSERT INTO compras (nombre, cantidad, stock, entrega, vencimiento, costo, unidad_medida, estado_compra_id, proveedore_id, alerta_min_stock, alerta_id, created_at, updated_at)
@@ -132,7 +132,7 @@ Purchase.updateById = async function (id, update = {}) {
         WHERE id = ?`,
       [name, quantity, quantity, deliveryDate, expirationDate, cost, unit, estadoCompraId, providerId, alertMinStock, alertaId, id]
     );
-  } catch (e) {
+  } catch {
     await pool.query(
       `UPDATE compras
           SET nombre = ?, cantidad = ?, stock = ?, entrega = ?, vencimiento = ?, costo = ?,

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  Migration: Drop compras.alerta_mensaje if it exists. Keep alerta_min_stock.
 */

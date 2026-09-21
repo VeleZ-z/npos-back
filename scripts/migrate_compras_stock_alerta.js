@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  Adds compras.stock (INT UNSIGNED) and compras.alerta_id (FK -> alertas.id),
  and backfills stock = cantidad when null. Safe to run multiple times.

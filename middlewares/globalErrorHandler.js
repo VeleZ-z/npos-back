@@ -1,6 +1,6 @@
 const config = require("../config/config");
 
-const globalErrorHandler = (err, req, res, next) => {
+const globalErrorHandler = (err, req, res, _next) => {
     const statusCode = err.statusCode || 500;
 
     return res.status(statusCode).json({

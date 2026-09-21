@@ -1,16 +1,11 @@
 ﻿const express = require("express");
 require("dotenv").config();
-const connectDB = require("./config/database");
-const config = require("./config/config");
 const { ping } = require("./config/mysql");
 const globalErrorHandler = require("./middlewares/globalErrorHandler");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const path = require("path");
 const app = express();
-
-const PORT = process.env.PORT || config.port || 3000;
-connectDB();
 
 // Middlewares
 const allowedOrigins = (process.env.CORS_ORIGINS || "https://nativhos-uib.vercel.app, http://localhost:5173")
@@ -79,13 +74,4 @@ app.use("/api/cash-desk", require("./routes/cashDeskRoute"));
 // Global Error Handler
 app.use(globalErrorHandler);
 
-// Background jobs (birthday notifications)
-try { require('./jobs/birthdayJob').schedule(); } catch {}
-
-
-// Server
-app.listen(PORT, () => {
-    console.log(`N POS Server is listening on port ${PORT}`);
-})
-
-
+module.exports = app;

@@ -70,7 +70,11 @@ const mapAttachment = (attachment) => {
   if (attachment.content) {
     content = attachment.content;
   } else if (attachment.path) {
+    // Justificación: parámetro interno de la utilidad sendEmail (contrato de
+    // adjuntos por ruta); ningún caller pasa `path` hoy y la ruta nunca es
+    // input directo del usuario.
     try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       content = fs.readFileSync(attachment.path);
     } catch {
       return null;
@@ -175,7 +179,10 @@ const mapAttachmentForResend = (attachment) => {
       ? attachment.content
       : Buffer.from(attachment.content);
   } else if (attachment.path) {
+    // Justificación: misma utilidad mapAttachment (adjuntos por ruta, parámetro
+    // interno del servicio); ruta nunca proveniente de input de usuario.
     try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       buffer = fs.readFileSync(attachment.path);
     } catch {
       return null;
@@ -203,6 +210,9 @@ function getLogoDataUri() {
   }
   if (cachedLogoDataUri !== undefined) return cachedLogoDataUri;
   try {
+    // Justificación: logoPath se resuelve de assets/ internos del repo
+    // (email-logo.png) u EMAIL_LOGO_PATH de config; nunca input de usuario.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     const buffer = fs.readFileSync(logoPath);
     const ext = path.extname(logoPath).replace(/^\./, "") || "png";
     cachedLogoDataUri = `data:image/${ext};base64,${buffer.toString("base64")}`;

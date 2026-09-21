@@ -30,29 +30,6 @@ async function createUserAlert(userId, message) {
   return alertaId;
 }
 
-// Also notify Admin/Cashier staff so they can see the alert
-async function assignAlertToStaff(alertaId) {
-  try {
-    const [roleRows] = await pool.query(
-      `SELECT id FROM roles WHERE LOWER(nombre) IN ('admin','cashier','cajero')`
-    );
-    if (!roleRows || roleRows.length === 0) return;
-    const roleIds = roleRows.map(r => r.id);
-    const placeholders = roleIds.map(() => '?').join(',');
-    const [userRows] = await pool.query(
-      `SELECT DISTINCT usuario_id FROM roles_x_usuarios WHERE role_id IN (${placeholders})`,
-      roleIds
-    );
-    if (!userRows || userRows.length === 0) return;
-    const values = userRows.map(u => [u.usuario_id, alertaId]);
-    await pool.query(
-      `INSERT INTO alertas_x_usuarios (usuario_id, alerta_id, created_at, updated_at)
-       VALUES ${values.map(() => '(?, ?, NOW(), NOW())').join(',')}`,
-      values.flat()
-    );
-  } catch {}
-}
-
 async function sendEmailIfConfigured(to, subject, html) {
   try {
     const logo = getLogoDataUri();
@@ -89,7 +66,7 @@ async function runOnce() {
       const already = await alreadyAlertedToday(u.id);
       if (already) continue;
       const message = `${BIRTHDAY_PREFIX}, ${u.nombre}!`;
-      const alertaId = await createUserAlert(u.id, message);
+      await createUserAlert(u.id, message);
       // No enviar a staff: solo el cumpleañero recibe la alerta
       const html = buildBirthdayHtml(u.nombre);
       await sendEmailIfConfigured(u.correo, '¡Feliz cumpleaños de Nativhos!', html);

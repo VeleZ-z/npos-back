@@ -1,8 +1,6 @@
 const createHttpError = require("http-errors");
 const Product = require("../models/productModel");
 const { pool } = require("../config/mysql");
-const path = require("path");
-const fs = require("fs");
 const { evaluateProductAlerts } = require("../services/productAlertService");
 
 async function generateInternalBarcode() {

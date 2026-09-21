@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  Drops alertas.compra_id and its FK if present.
 */

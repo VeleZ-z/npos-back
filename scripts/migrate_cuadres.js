@@ -34,9 +34,9 @@ async function up() {
   const conn = await pool.getConnection();
   try {
     console.log("[1/5] Ensuring estados for cuadres (ABIERTO, CERRADO, ANULADO)");
-    const estados = {};
+    const estados = new Map();
     for (const nombre of ["ABIERTO", "CERRADO", "ANULADO"]) {
-      estados[nombre] = await ensureEstado(conn, nombre);
+      estados.set(nombre, await ensureEstado(conn, nombre));
     }
 
     console.log("[2/5] Creating table cuadres (if missing)");

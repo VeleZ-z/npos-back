@@ -1,4 +1,3 @@
-const bcrypt = require("bcrypt");
 const { pool } = require("../config/mysql");
 
 class UserDoc {
@@ -250,7 +249,7 @@ User.setRole = async function (userId, roleName) {
   const normalized = String(roleName).trim();
   if (!normalized) return;
   // Ensure role exists, create once if missing (case-insensitive)
-  let roleId = null;
+  let roleId;
   const [[roleRow]] = await pool.query(
     "SELECT id FROM roles WHERE LOWER(nombre) = LOWER(?) LIMIT 1",
     [normalized]

@@ -98,7 +98,7 @@ Table.find = function () {
   };
 };
 
-Table.findByIdAndUpdate = async function (id, update = {}, options = {}) {
+Table.findByIdAndUpdate = async function (id, update = {}, _options = {}) {
   // If an orderId provided, associate the pedido to this mesa
   if (update.currentOrder) {
     await pool.query("UPDATE pedidos SET mesa_id = ? WHERE id = ?", [id, update.currentOrder]);
@@ -111,4 +111,6 @@ Table.findByIdAndUpdate = async function (id, update = {}, options = {}) {
 };
 
 module.exports = Table;
+// Exported for unit testing (no behavior change)
+module.exports.computeStatusForTable = computeStatusForTable;
 

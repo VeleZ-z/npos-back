@@ -3,6 +3,17 @@ const config = require("./config");
 const fs = require("fs");
 const path = require("path");
 const caPath = process.env.MYSQL_CA || path.resolve(__dirname, "..", "certs", "aiven-ca.pem");
+// SSL on when the CA cert exists (production default); MYSQL_SSL env overrides it
+// explicitly so test/dev databases without TLS can connect.
+// Justificación: la ruta del CA proviene de config (env MYSQL_CA) con existsSync;
+// nunca es input de usuario.
+const sslEnabled =
+  process.env.MYSQL_SSL === "true"
+    ? true
+    : process.env.MYSQL_SSL === "false"
+      ? false
+      : // eslint-disable-next-line security/detect-non-literal-fs-filename
+        fs.existsSync(caPath);
 
 const pool = mysql.createPool({
   host: config.mysql.host,
@@ -10,7 +21,10 @@ const pool = mysql.createPool({
   user: config.mysql.user,
   password: config.mysql.password,
   database: config.mysql.database,
-  ssl: { ca: fs.readFileSync(caPath), rejectUnauthorized: true },
+  ssl: sslEnabled
+    ? // eslint-disable-next-line security/detect-non-literal-fs-filename
+      { ca: fs.readFileSync(caPath), rejectUnauthorized: true }
+    : undefined,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

@@ -6,8 +6,6 @@ const User = require("../models/userModel");
 const { pool } = require("../config/mysql");
 const { evaluateProductAlerts } = require("../services/productAlertService");
 const { sendEmail, getLogoDataUri } = require("../services/emailService");
-const path = require("path");
-const fs = require("fs");
 const PDFDocument = require("pdfkit");
 
 const normalizeUserId = (value) => {
@@ -137,7 +135,10 @@ const moneyFormatter = new Intl.NumberFormat("es-CO", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
-const formatMoney = (value) => moneyFormatter.format(Number(value || 0));
+const formatMoney = (value) => {
+  const num = Number(value);
+  return moneyFormatter.format(Number.isFinite(num) ? num : 0);
+};
 const resolveDiscountCode = (items = []) => {
   const codes = (items || [])
     .map((item) => item?.discount?.id)
@@ -1091,5 +1092,21 @@ module.exports = {
   getInvoice,
   getInvoices,
   getCustomerInvoices,
-  cancelInvoice
+  cancelInvoice,
+  // Pure/internal helpers exported for unit testing (no behavior change)
+  normalizeUserId,
+  resolvePaymentDisplay,
+  computeDiscountedUnitPrice,
+  formatMoney,
+  mmToPt,
+  resolveDiscountCode,
+  resolveTableNumber,
+  normalizeInvoiceItems,
+  buildInvoiceEmailHtml,
+  generateInvoicePdfBuffer,
+  fetchOrderItemsSnapshot,
+  fetchPaymentMethod,
+  ensureInvoiceStateId,
+  findActiveCuadreId,
+  generateInvoiceNumber,
 };

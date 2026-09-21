@@ -44,7 +44,7 @@ class OrderDoc {
         "INSERT INTO pedidos (mesa_id, estado_id, usuario_cliente_id, usuario_cajero_id, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
         [this.table || null, this.estadoId, this.customerUserId || null, this.cashierUserId || null]
       );
-    } catch (e) {
+    } catch {
       // Fallback si columna no existe (compatibilidad antigua)
       [res] = await pool.query(
         "INSERT INTO pedidos (mesa_id, created_at, updated_at) VALUES (?, NOW(), NOW())",
@@ -222,7 +222,7 @@ Order.find = function () {
   };
 };
 
-Order.findByIdAndUpdate = async function (id, update = {}, options = {}) {
+Order.findByIdAndUpdate = async function (id, update = {}, _options = {}) {
   const current = await getOrderJsonById(id);
   if (!current) return null;
   const next = { ...current, ...update };
