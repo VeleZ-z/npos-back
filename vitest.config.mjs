@@ -10,6 +10,10 @@ export default defineConfig({
     setupFiles: ["test/setup.js"],
     testTimeout: 30000,
     hookTimeout: 60000,
+    // Los archivos de integración comparten una sola base de pruebas:
+    // deben ejecutarse en secuencia para que el truncado entre suites
+    // no pise datos de otro archivo en paralelo.
+    fileParallelism: false,
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "html"],

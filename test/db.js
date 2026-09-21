@@ -32,6 +32,16 @@ export function runMigrations() {
   return result.stdout;
 }
 
+// Lookup/seed tables (static reference data from migrate_full_schema.js):
+// NOT truncated so seeded estados/roles/impuestos/metodos_pagos survive.
+const LOOKUP_TABLES = new Set([
+  "estados",
+  "roles",
+  "documentos",
+  "impuestos",
+  "metodos_pagos",
+]);
+
 const TABLES_IN_FK_SAFE_ORDER = [
   "alertas_x_usuarios",
   "alertas_compras",
@@ -40,29 +50,29 @@ const TABLES_IN_FK_SAFE_ORDER = [
   "descuentos_x_productos",
   "productos_x_pedidos",
   "productos_imagenes",
-  "productos",
   "descuentos",
-  "impuestos",
+  "productos",
   "pedidos",
+  "orders_json",
   "cuadres",
   "facturas",
-  "metodos_pagos",
   "compras",
   "proveedores",
-  "categorias",
   "mesas",
-  "usuarios",
-  "orders_json",
   "cache",
-  "estados",
+  "usuarios",
 ];
 
 export async function truncateAll() {
   const conn = await pool.getConnection();
   try {
+    const [rows] = await conn.query("SHOW TABLES");
+    const existing = new Set(rows.map((r) => Object.values(r)[0]));
     await conn.query("SET FOREIGN_KEY_CHECKS = 0");
     for (const table of TABLES_IN_FK_SAFE_ORDER) {
-      await conn.query(`TRUNCATE TABLE ${table}`);
+      if (!LOOKUP_TABLES.has(table) && existing.has(table)) {
+        await conn.query(`TRUNCATE TABLE ${table}`);
+      }
     }
   } finally {
     await conn.query("SET FOREIGN_KEY_CHECKS = 1");
