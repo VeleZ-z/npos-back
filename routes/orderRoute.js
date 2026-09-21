@@ -4,8 +4,10 @@ const { isVerifiedUser, authorizeRoles } = require("../middlewares/tokenVerifica
 const router = express.Router();
 
 
-router.route("/").post(isVerifiedUser, addOrder);
-router.route("/").get(isVerifiedUser, getOrders);
+// El front consulta/crea órdenes como guest o Customer (filtrado a propias en
+// getOrders); el staff ve todas. RBAC: admin/cashier/customer.
+router.route("/").post(isVerifiedUser, authorizeRoles("admin", "cashier", "customer"), addOrder);
+router.route("/").get(isVerifiedUser, authorizeRoles("admin", "cashier", "customer"), getOrders);
 router.route("/:id").get(isVerifiedUser, getOrderById);
 // Only staff may update order statuses
 router.route("/:id").put(isVerifiedUser, authorizeRoles('admin','cashier'), updateOrder);

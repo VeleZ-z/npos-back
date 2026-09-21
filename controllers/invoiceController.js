@@ -52,10 +52,10 @@ function resolvePaymentDisplay(name) {
   return "Transferencia";
 }
 
-let cachedInvoiceStateId = null;
+const invoiceStateIdCache = new Map();
 async function ensureInvoiceStateId(nombre = "FACTURADO") {
-  if (cachedInvoiceStateId) return cachedInvoiceStateId;
   const upper = String(nombre || "").toUpperCase();
+  if (invoiceStateIdCache.has(upper)) return invoiceStateIdCache.get(upper);
   const [rows] = await pool.query(
     "SELECT id FROM estados WHERE UPPER(nombre) = ? AND tipo = 6 LIMIT 1",
     [upper]
@@ -68,8 +68,16 @@ async function ensureInvoiceStateId(nombre = "FACTURADO") {
     );
     id = res.insertId;
   }
-  cachedInvoiceStateId = id;
+  invoiceStateIdCache.set(upper, id);
   return id;
+}
+
+async function findEstadoIdByNombre(nombre, tipo) {
+  const [rows] = await pool.query(
+    "SELECT id FROM estados WHERE UPPER(nombre) = ? AND tipo = ? LIMIT 1",
+    [String(nombre || "").toUpperCase(), tipo]
+  );
+  return rows[0]?.id || null;
 }
 
 async function findActiveCuadreId(userId) {
@@ -1051,13 +1059,22 @@ const getCustomerInvoices = async (req, res, next) => {
 // Anular factura
 const cancelInvoice = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findById(req.params.id);
+    const invQuery = Invoice.findById(req.params.id);
+    const invoice = await (invQuery.exec ? invQuery.exec() : invQuery);
 
     if (!invoice) {
       return next(createHttpError(404, "Factura no encontrada"));
     }
 
     if (invoice.status === "ANULADA") {
+      return next(createHttpError(400, "Factura ya esta anulada"));
+    }
+
+    // El estado de anulación se representa con estado_factura_id (tipo 6);
+    // facturas no tiene columna status. Si el estado ya existe y la factura
+    // lo tiene, ya está anulada (check sin efectos secundarios).
+    const existingAnuladaId = await findEstadoIdByNombre("ANULADA", 6);
+    if (existingAnuladaId && invoice.invoiceStateId === existingAnuladaId) {
       return next(createHttpError(400, "Factura ya esta anulada"));
     }
 
@@ -1068,14 +1085,22 @@ const cancelInvoice = async (req, res, next) => {
       return next(createHttpError(403, "Solo administradores pueden anular facturas"));
     }
 
-    invoice.status = "ANULADA";
-    await invoice.save();
+    // Persistir anulación con UPDATE (el estado ANULADA se crea solo aquí,
+    // después de la autorización) — save() insertaría una fila duplicada.
+    const anuladaId = existingAnuladaId || (await ensureInvoiceStateId("ANULADA"));
+    await pool.query(
+      "UPDATE facturas SET estado_factura_id = ?, updated_at = NOW() WHERE id = ?",
+      [anuladaId, invoice._id]
+    );
 
     // Actualizar orden
     await Order.findByIdAndUpdate(invoice.order, {
       paymentStatus: "PENDIENTE",
       orderStatus: "ENTREGADO"
     });
+
+    invoice.status = "ANULADA";
+    invoice.invoiceStateId = anuladaId;
 
     res.json({
       success: true,
