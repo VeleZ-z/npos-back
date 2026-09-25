@@ -169,4 +169,4 @@ async function sendEmailIfConfigured(to, subject, html) {
   }
 }
 
-module.exports = { evaluateProductAlerts };
+module.exports = { evaluateProductAlerts, buildProductAlertEmail };

@@ -998,7 +998,7 @@ const createInvoice = async (req, res, next) => {
 const getInvoice = async (req, res, next) => {
   try {
     const invQuery = Invoice.findById(req.params.id);
-    const invoice = await invQuery.exec ? invQuery.exec() : invQuery;
+    const invoice = await (invQuery.exec ? invQuery.exec() : invQuery);
     if (!invoice) {
       return next(createHttpError(404, "Factura no encontrada"));
     }
@@ -1048,7 +1048,8 @@ const getCustomerInvoices = async (req, res, next) => {
 
     const invoices = await Invoice.find({ "customer.user": customerId })
       .populate("order")
-      .sort({ invoiceDate: -1 });
+      .sort({ invoiceDate: -1 })
+      .limit(100);
 
     res.json({ success: true, data: invoices });
   } catch (error) {

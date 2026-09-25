@@ -154,10 +154,18 @@ Invoice.find = function (filter = {}) {
     limit: async function (n) {
       let sql =
         "SELECT f.*, p.usuario_cliente_id AS pedido_usuario_cliente_id, p.usuario_cajero_id AS pedido_usuario_cajero_id FROM facturas f LEFT JOIN pedidos p ON p.id = f.pedido_id";
+      const where = [];
       const params = [];
       if (filter.invoiceDate && filter.invoiceDate.$gte && filter.invoiceDate.$lte) {
-        sql += " WHERE f.created_at BETWEEN ? AND ?";
+        where.push("f.created_at BETWEEN ? AND ?");
         params.push(new Date(filter.invoiceDate.$gte), new Date(filter.invoiceDate.$lte));
+      }
+      if (filter["customer.user"] != null) {
+        where.push("p.usuario_cliente_id = ?");
+        params.push(Number(filter["customer.user"]));
+      }
+      if (where.length) {
+        sql += ` WHERE ${where.join(" AND ")}`;
       }
       sql += " ORDER BY f.created_at DESC LIMIT ?";
       params.push(Number(n) || 50);
