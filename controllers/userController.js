@@ -1,6 +1,5 @@
 const createHttpError = require("http-errors");
 const User = require("../models/userModel");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config/config");
 const { pool } = require("../config/mysql");
@@ -27,85 +26,6 @@ function determineRoleByEmail(email, roleCfg = config.authRoles || {}) {
         return 'Cashier';
     }
     return roleCfg.defaultRole || 'Customer';
-}
-
-const register = async (req, res, next) => {
-    try {
-
-        const { name, phone, email, password, role } = req.body;
-
-        if(!name || !phone || !email || !password || !role){
-            const error = createHttpError(400, "todos los campos son requeridos!");
-            return next(error);
-        }
-
-        const isUserPresent = await User.findOne({email});
-        if(isUserPresent){
-            const error = createHttpError(400, "usuario ya creado!");
-            return next(error);
-        }
-
-
-        const user = { name, phone, email, password, role };
-        const newUser = User(user);
-        await newUser.save();
-
-        res.status(201).json({success: true, message: "New user created!", data: newUser});
-
-
-    } catch (error) {
-        next(error);
-    }
-}
-
-
-const login = async (req, res, next) => {
-
-    try {
-        
-        const { email, password } = req.body;
-
-        if(!email || !password) {
-            const error = createHttpError(400, "todos los campos son requeridos!");
-            return next(error);
-        }
-
-        const isUserPresent = await User.findOne({email});
-        if(!isUserPresent || !isUserPresent.password){
-            const error = createHttpError(401, "credenciales invalidas");
-            return next(error);
-        }
-
-        const isMatch = await bcrypt.compare(password, String(isUserPresent.password));
-        if(!isMatch){
-            const error = createHttpError(401, "credenciales invalidas");
-            return next(error);
-        }
-
-        const accessToken = jwt.sign({_id: isUserPresent._id}, config.accessTokenSecret, {
-            expiresIn : '1d'
-        });
-
-        const cookieOpts = {
-            maxAge: 1000 * 60 * 60 * 24 * 30,
-            httpOnly: true,
-            sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
-            secure: config.nodeEnv === 'production'
-        };
-        res.cookie('accessToken', accessToken, cookieOpts)
-
-        res.status(200).json({
-            success: true, 
-            message: "User login successfully!", 
-            data: isUserPresent,
-            token: accessToken  
-        });
-
-
-    } catch (error) {
-        next(error);
-    }
-
 }
 
 const getUserData = async (req, res, next) => {
@@ -219,7 +139,10 @@ const googleLogin = async (req, res, next) => {
 }
 
 
-module.exports = { register, login, getUserData, logout, googleLogin }
+// register/login (autenticación local con contraseña) eliminados: eran código
+// muerto verificado — sin rutas en userRoute.js y el frontend solo usa
+// google-login (One Tap). El sistema no persiste contraseñas.
+module.exports = { getUserData, logout, googleLogin }
 
 // Additional endpoints: document types and profile update
 module.exports.searchUsers = async (req, res, next) => {

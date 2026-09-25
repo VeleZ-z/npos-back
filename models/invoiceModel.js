@@ -42,8 +42,10 @@ class InvoiceDoc {
     this.cuadreId = normalizeUserId(data.cuadreId ?? data.cuadre_id);
   }
 
-  async save() {
-    const [res] = await pool.query(
+  // Accepts an optional connection so the caller can wrap the insert in a
+  // transaction (atomic factura + inventory discount). Defaults to the pool.
+  async save(conn = pool) {
+    const [res] = await conn.query(
       `INSERT INTO facturas (
         numero_factura, subTotal, impuestos, propina, total, monto, cambio,
         pedido_id, cuadre_id, estado_factura_id, metodos_pago_id,
@@ -68,7 +70,7 @@ class InvoiceDoc {
 
     if (this.order) {
       try {
-        await pool.query(
+        await conn.query(
           `UPDATE pedidos
               SET usuario_cajero_id = COALESCE(usuario_cajero_id, ?),
                   usuario_cliente_id = COALESCE(usuario_cliente_id, ?),

@@ -873,56 +873,51 @@ const createInvoice = async (req, res, next) => {
       );
     }
 
-    const invoice = new Invoice({
-      invoiceNumber,
-      issuer: {
-        businessName: process.env.BUSINESS_NAME || "Mi Restaurante",
-        nit: process.env.BUSINESS_NIT || "900000000-0",
-        address: process.env.BUSINESS_ADDRESS || "Direccion no configurada",
-        phone: process.env.BUSINESS_PHONE,
-        email: process.env.BUSINESS_EMAIL
-      },
-      customer: customerInfo,
-      customerUserId: customerInfo.user,
-      paymentType: paymentType || "CONTADO",
-      paymentMethod: methodDisplay,
-      items: invoiceItems,
-      totals: {
-        subtotal: orderSubtotal,
-        totalTax: orderTax,
-        total: orderTotal
-      },
-      tip: tipValue,
-      cashAmount: receivedAmount,
-      change: changeValue,
-      paymentMethodId: methodRow.id,
-      cuadreId: activeCuadreId,
-      electronic: {
-        isElectronic: isElectronic || false
-      },
-      order: orderId,
-      processedBy: req.user._id,
-      notes,
-      invoiceStateId,
-    });
-
-    await invoice.save();
-
-    // Identificar productos involucrados en la factura
-    let affectedProductIds = [];
+    // Crear factura + descontar inventario ATÓMICAMENTE: si cualquiera de las
+    // dos escrituras falla, ninguna se aplica (hallazgo F1: dinero vs stock).
+    const conn = await pool.getConnection();
+    let invoice;
     try {
-      const [rows] = await pool.query(
-        "SELECT DISTINCT producto_id FROM productos_x_pedidos WHERE pedido_id = ?",
-        [orderId]
-      );
-      affectedProductIds = rows
-        .map((r) => Number(r.producto_id))
-        .filter((value) => Number.isFinite(value) && value > 0);
-    } catch { }
+      await conn.beginTransaction();
 
-    // Descontar inventario por productos vendidos en este pedido
-    try {
-      await pool.query(`
+      invoice = new Invoice({
+        invoiceNumber,
+        issuer: {
+          businessName: process.env.BUSINESS_NAME || "Mi Restaurante",
+          nit: process.env.BUSINESS_NIT || "900000000-0",
+          address: process.env.BUSINESS_ADDRESS || "Direccion no configurada",
+          phone: process.env.BUSINESS_PHONE,
+          email: process.env.BUSINESS_EMAIL
+        },
+        customer: customerInfo,
+        customerUserId: customerInfo.user,
+        paymentType: paymentType || "CONTADO",
+        paymentMethod: methodDisplay,
+        items: invoiceItems,
+        totals: {
+          subtotal: orderSubtotal,
+          totalTax: orderTax,
+          total: orderTotal
+        },
+        tip: tipValue,
+        cashAmount: receivedAmount,
+        change: changeValue,
+        paymentMethodId: methodRow.id,
+        cuadreId: activeCuadreId,
+        electronic: {
+          isElectronic: isElectronic || false
+        },
+        order: orderId,
+        processedBy: req.user._id,
+        notes,
+        invoiceStateId,
+      });
+
+      await invoice.save(conn);
+
+      // Descontar inventario por productos vendidos en este pedido
+      // (dentro de la misma transacción)
+      await conn.query(`
         UPDATE productos p
         JOIN (
           SELECT producto_id, SUM(cantidad) AS qty
@@ -933,6 +928,25 @@ const createInvoice = async (req, res, next) => {
         SET p.cantidad = GREATEST(0, COALESCE(p.cantidad, 0) - x.qty),
             p.updated_at = NOW()
       `, [orderId]);
+
+      await conn.commit();
+    } catch (txError) {
+      await conn.rollback();
+      return next(txError);
+    } finally {
+      conn.release();
+    }
+
+    // Identificar productos involucrados en la factura (para alertas de stock)
+    let affectedProductIds = [];
+    try {
+      const [rows] = await pool.query(
+        "SELECT DISTINCT producto_id FROM productos_x_pedidos WHERE pedido_id = ?",
+        [orderId]
+      );
+      affectedProductIds = rows
+        .map((r) => Number(r.producto_id))
+        .filter((value) => Number.isFinite(value) && value > 0);
     } catch { }
 
     if (affectedProductIds.length) {
