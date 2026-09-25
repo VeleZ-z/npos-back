@@ -110,6 +110,7 @@ export async function createPaymentMethod({
 export async function createOrder({
   mesaId = null,
   estadoId = ESTADOS.PEDIDO_PENDIENTE,
+  orderStatus = "PENDIENTE",
   clienteUserId = null,
   cashierUserId = null,
   customer = null,
@@ -131,7 +132,7 @@ export async function createOrder({
       orderId,
       JSON.stringify({
         customer: customerPayload,
-        orderStatus: "PENDIENTE",
+        orderStatus,
         items: [],
         bills: { subtotal: 0, tax: 0, total: 0 },
         table: mesaId,
@@ -163,5 +164,5 @@ export async function createOrder({
       ]
     );
   }
-  return { _id: orderId, mesaId, estadoId, items };
+  return { _id: orderId, mesaId, estadoId, orderStatus, items };
 }

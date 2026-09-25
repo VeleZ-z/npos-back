@@ -83,4 +83,4 @@ function schedule() {
   setInterval(runOnce, sixHours);
 }
 
-module.exports = { schedule };
+module.exports = { schedule, runOnce, buildBirthdayHtml, sendEmailIfConfigured };
