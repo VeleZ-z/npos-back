@@ -1,12 +1,13 @@
 const { ping, ensureAuxTables } = require("./mysql");
+const logger = require("./logger");
 
 const connectDB = async () => {
   try {
     await ping();
     await ensureAuxTables();
-    console.log("Connected to MySQL and ensured auxiliary tables.");
+    logger.info("Connected to MySQL and ensured auxiliary tables.");
   } catch (error) {
-    console.error("MySQL connection error:", error);
+    logger.error({ err: error }, "MySQL connection error");
     process.exit(1);
   }
 };

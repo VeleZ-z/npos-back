@@ -3,6 +3,7 @@ const Discount = require("../models/discountModel");
 const User = require("../models/userModel");
 const { pool } = require("../config/mysql");
 const { sendEmail, buildAssetUrl } = require("../services/emailService");
+const logger = require("../config/logger");
 const processFlyer = (file) => {
   if (!file) {
     return { hasFile: false, imagePath: null, imageData: null, imageMime: null };
@@ -101,7 +102,7 @@ const broadcastDiscount = async (discount) => {
         await new Promise((resolve) => setTimeout(resolve, 600));
       }
     } catch (err) {
-      console.log("[discount email]", err?.message || err);
+      logger.warn({ err }, "[discount email] send skipped");
     }
   }
 

@@ -1,5 +1,6 @@
 const https = require("https");
 const nodemailer = require("nodemailer");
+const logger = require("../config/logger");
 const fs = require("fs");
 const path = require("path");
 const config = require("../config/config");
@@ -97,7 +98,7 @@ async function sendEmail({ to, subject, html, attachments = [] }) {
   }
   const mailer = getTransporter();
   if (!mailer) {
-    console.warn("[email] skipped: SMTP credentials are not configured");
+    logger.warn("[email] skipped: SMTP credentials are not configured");
     return;
   }
 

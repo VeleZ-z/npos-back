@@ -1,4 +1,5 @@
 const { pool } = require('../config/mysql');
+const logger = require('../config/logger');
 const { sendEmail, getLogoDataUri } = require('../services/emailService');
 
 const BIRTHDAY_PREFIX = 'Feliz cumpleaños';
@@ -36,7 +37,7 @@ async function sendEmailIfConfigured(to, subject, html) {
     const enriched = logo ? html.replace('cid:logo', logo) : html.replace('cid:logo', '');
     await sendEmail({ to, subject, html: enriched });
   } catch (e) {
-    console.log('[birthdayJob] email send skipped/error:', e?.message || e);
+    logger.warn({ err: e }, '[birthdayJob] email send skipped/error');
   }
 }
 
@@ -72,7 +73,7 @@ async function runOnce() {
       await sendEmailIfConfigured(u.correo, '¡Feliz cumpleaños de Nativhos!', html);
     }
   } catch (e) {
-    console.log('[birthdayJob] error:', e?.message || e);
+    logger.error({ err: e }, '[birthdayJob] error');
   }
 }
 

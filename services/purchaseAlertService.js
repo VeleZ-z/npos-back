@@ -1,5 +1,6 @@
 const { pool } = require("../config/mysql");
 const { sendEmail, getLogoDataUri } = require("./emailService");
+const logger = require("../config/logger");
 
 const DAYS_BEFORE_EXPIRY_ALERT = 7;
 const STAFF_ROLE_NAMES = ["admin", "administrator", "cashier", "cajero"];
@@ -77,7 +78,7 @@ async function evaluatePurchaseAlerts(purchase) {
       await assignAlertToStaff(alertaId, purchase);
     }
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, 'purchase alert error');
   }
 }
 
@@ -169,7 +170,7 @@ async function emailStaff(roleIds, purchase, alertaId) {
       await sendEmail({ to: row.email, subject, html });
     }
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, 'purchase alert error');
   }
 }
 

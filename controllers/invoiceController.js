@@ -1,6 +1,7 @@
 const createHttpError = require("http-errors");
 const Invoice = require("../models/invoiceModel");
 const Order = require("../models/orderModel");
+const logger = require("../config/logger");
 const Product = require("../models/productModel");
 const User = require("../models/userModel");
 const { pool } = require("../config/mysql");
@@ -608,7 +609,7 @@ async function sendInvoiceEmail(invoice, order, customerEmail) {
         contentType: "application/pdf",
       });
     } catch (pdfErr) {
-      console.log("[invoice email] pdf error:", pdfErr?.message || pdfErr);
+      logger.warn({ err: pdfErr }, "[invoice email] pdf error");
     }
 
     await sendEmail({
@@ -618,7 +619,7 @@ async function sendInvoiceEmail(invoice, order, customerEmail) {
       attachments,
     });
   } catch (err) {
-    console.log("[invoice email] error:", err?.message || err);
+    logger.warn({ err }, "[invoice email] send skipped");
   }
 }
 
@@ -955,7 +956,7 @@ const createInvoice = async (req, res, next) => {
           const productDoc = await Product.findById(productId);
           if (productDoc) await evaluateProductAlerts(productDoc);
         } catch (err) {
-          console.error(err);
+          logger.error({ err }, "product alert evaluation error");
         }
       }
     }

@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { isVerifiedUser } = require("../middlewares/tokenVerification");
+const { validateBody } = require("../middlewares/validateBody");
+const { createInvoiceSchema } = require("../validations/schemas");
 const {
   createInvoice,
   getInvoice,
@@ -13,7 +15,7 @@ const {
 router.use(isVerifiedUser);
 
 // Crear factura (solo cajeros y admin)
-router.post("/", createInvoice);
+router.post("/", validateBody(createInvoiceSchema), createInvoice);
 
 // Listar facturas con filtros
 router.get("/", getInvoices);

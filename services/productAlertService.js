@@ -1,5 +1,6 @@
 const { pool } = require("../config/mysql");
 const { sendEmail, getLogoDataUri } = require("./emailService");
+const logger = require("../config/logger");
 
 const ROLE_NAMES = ["admin", "administrator", "cashier", "cajero"];
 
@@ -71,7 +72,7 @@ async function evaluateProductAlerts(productOrId) {
       await assignProductAlert(alertaId, product, message);
     }
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "product alert error");
   }
 }
 
@@ -113,7 +114,7 @@ async function assignProductAlert(alertaId, product, message) {
 
     await emailStaff(roleIds, product, message);
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "product alert error");
   }
 }
 
@@ -138,7 +139,7 @@ async function emailStaff(roleIds, product, message) {
       await sendEmailIfConfigured(row.email, subject, html);
     }
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "product alert error");
   }
 }
 
@@ -165,7 +166,7 @@ async function sendEmailIfConfigured(to, subject, html) {
   try {
     await sendEmail({ to, subject, html });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "product alert error");
   }
 }
 

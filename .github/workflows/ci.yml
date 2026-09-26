@@ -207,7 +207,8 @@ jobs:
           docker run -d --name npos-ci -p 8000:8000 \
             --add-host=host.docker.internal:host-gateway \
             -e NODE_ENV=production -e PORT=8000 \
-            -e JWT_SECRET=ci-dummy -e GOOGLE_CLIENT_ID=ci-dummy \
+            -e JWT_SECRET=ci-dummy-secret-with-at-least-32-characters \
+            -e GOOGLE_CLIENT_ID=ci-dummy \
             -e MYSQL_HOST=host.docker.internal -e MYSQL_PORT=3306 \
             -e MYSQL_USER=npos_test -e MYSQL_PASSWORD=npos_test_pw \
             -e MYSQL_DATABASE=npos_test -e MYSQL_SSL=false \

@@ -32,7 +32,17 @@ module.exports = [
       // best-effort, envíos de email best-effort). Los bloques vacíos reales
       // (if/for sin cuerpo) siguen reportándose y se arreglan.
       "no-empty": ["error", { allowEmptyCatch: true }],
+      // El código de app usa el logger estructurado (config/logger.js).
+      // Los scripts de migración exentos abajo: stdout es su UX correcta.
+      "no-console": "error",
       "n/no-process-exit": "off",
+    },
+  },
+  {
+    // Justificación: scripts de migración/seed son CLIs cuyo UX es stdout.
+    files: ["scripts/**"],
+    rules: {
+      "no-console": "off",
     },
   },
   {

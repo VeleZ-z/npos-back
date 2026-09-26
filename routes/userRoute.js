@@ -1,11 +1,14 @@
 const express = require("express");
 const { getUserData, logout, googleLogin, getDocTypes, updateProfile, getUsers, adminUpdateUser, adminSetUserRole, getRoles, searchUsers } = require("../controllers/userController");
 const { isVerifiedUser, authorizeRoles } = require("../middlewares/tokenVerification");
+const { authLimiter } = require("../middlewares/rateLimiters");
+const { validateBody } = require("../middlewares/validateBody");
+const { googleLoginSchema } = require("../validations/schemas");
 const router = express.Router();
 
 
 // Authentication Routes (Google One Tap only)
-router.route("/google-login").post(googleLogin);
+router.route("/google-login").post(authLimiter, validateBody(googleLoginSchema), googleLogin);
 router.route("/logout").post(isVerifiedUser, logout)
 
 router.route("/").get(isVerifiedUser , getUserData);

@@ -1,6 +1,7 @@
 const createHttpError = require("http-errors");
 const ExcelJS = require("exceljs");
 const { pool } = require("../config/mysql");
+const logger = require("../config/logger");
 const { sendEmail, getLogoDataUri } = require("../services/emailService");
 
 const normalizeId = (value) => {
@@ -275,7 +276,7 @@ const closeCashDesk = async (req, res, next) => {
 
     const updated = await fetchCuadreById(active.id);
     notifyCashDeskClosure(updated, totals).catch((err) =>
-      console.error("[cashdesk email]", err?.message || err)
+      logger.warn({ err }, "[cashdesk email] send skipped")
     );
     res.json({
       success: true,

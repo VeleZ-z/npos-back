@@ -29,6 +29,7 @@ COPY --chown=node:node routes ./routes
 COPY --chown=node:node controllers ./controllers
 COPY --chown=node:node models ./models
 COPY --chown=node:node middlewares ./middlewares
+COPY --chown=node:node validations ./validations
 COPY --chown=node:node services ./services
 COPY --chown=node:node jobs ./jobs
 COPY --chown=node:node assets ./assets
