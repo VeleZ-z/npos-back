@@ -1,12 +1,17 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../../app";
+import { isDbAvailable } from "../db";
+
+// Sin BD el health responde 503: este archivo se omite con mensaje
+// explícito como el resto de integración (corre en CI con service MySQL).
+const dbUp = await isDbAvailable();
 
 // Umbrales de cabeceras de helmet según su default actual: nosniff siempre,
 // CORP same-origin en la API y cross-origin en estáticos consumidos por el
 // frontend. No se asumen cabeceras que helmet pueda rotar entre versiones.
 
-describe("Integración — Hardening HTTP", () => {
+describe.skipIf(!dbUp)("Integración — Hardening HTTP", () => {
   it("Dado GET /api/health Cuando responde Entonces cabeceras de seguridad presentes", async () => {
     const res = await request(app).get("/api/health");
     expect(res.status).toBe(200);
