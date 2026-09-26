@@ -122,7 +122,9 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --fail-on=all-issues
+          # --fail-on=all: rompe si existe CUALQUIER issue >= high (valor
+          # valido del CLI: 'all' | 'upgradable'; 'all-issues' no existe).
+          args: --severity-threshold=high --fail-on=all
       - name: Snyk monitor (base de datos de vulnerabilidades)
         if: github.event_name != 'pull_request'
         uses: snyk/actions/node@master
