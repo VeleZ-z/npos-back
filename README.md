@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/github/VeleZ-z/npos-back/badge.svg?branch=main)](https://coveralls.io/github/VeleZ-z/npos-back?branch=main)
+
 # Nativ POS System - Backend (`npos-back`)
 
 API RESTful para la gestión operativa de restaurantes y facturación electrónica adaptada a la normativa colombiana (DIAN).
